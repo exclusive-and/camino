@@ -24,6 +24,9 @@ library
         TypeApplications
     exposed-modules:
         Computeroid.AdjacencyMap
+        Computeroid.Graph.Sparse
+        Computeroid.Identify
+        Computeroid.Reaching
         Computeroid.Strategies
     build-depends:
         base ^>=4.20,
