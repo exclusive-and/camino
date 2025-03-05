@@ -36,9 +36,7 @@ sccmap f (Graph g xs) =
         whenInteresting f v s = do
             (ns, _) <- ask
             n <- ns `readArray` v
-            if n == 0
-                then f v s
-                else pure s
+            if n == 0 then f v s else pure s
         
         -- This implementation was derived from the outline of the @Digraph@ algorithm given
         -- in https://doi.org/10.1145/69622.357187.
