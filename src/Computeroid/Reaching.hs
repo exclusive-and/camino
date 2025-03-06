@@ -49,27 +49,23 @@ sccmap f (Graph g xs) =
         
         go v (sccs, stack) = do
             (ns, ys) <- ask
-
-            -- 1. Compute initial preorder number
+            -- 1. Compute initial preorder number.
             let depth = length stack + 1
             writeArray ns v depth
-
-            -- 2. Recurse on adjacent vertices
+            -- 2. Recurse on adjacent vertices.
             let ws = g `indexArray` v
             (sccs', stack') <- sccfold (sccs, v:stack) ws
-
-            -- 3. Compute new preorder
+            -- 3. Compute new preorder.
             ns' <- traverse (readArray ns) ws
             let n' = foldr min depth ns'
             writeArray ns v n'
-            
-            -- 4. Compute immediate and combined results
+            -- 4. Compute immediate and combined results.
+            --    See Note [Recurse before calculating the immediate result].
             let y = f (xs `indexArray` v)
             ys' <- traverse (readArray ys) ws
             let y' = foldr (<>) y ys'
             writeArray ys v y'
-
-            -- 5. Create a new SCC if one is detected
+            -- 5. Create a new SCC if one is detected.
             if n' == depth
                 then consScc [] v (sccs', stack')
                 else pure (sccs', stack')
@@ -86,6 +82,14 @@ sccmap f (Graph g xs) =
                         , null scc  -> pure (Trivial y x : sccs, stack)
                         | otherwise -> pure (Cycle y (x :| scc) : sccs, stack)
                 else consScc (x:scc) v (sccs, stack)
+
+{-
+Note [Recurse before calculating the immediate result]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Contrary to the algorithm in the paper, my 'sccmap' implementation recurses /before/
+computing the immediate result of a vertex. This change is important, because it
+means 'sccmap' won't allow a vertex to contribute to the result of its own SCC twice.
+-}
 
 -- | Like 'reachingSets' with repetition.
 --
