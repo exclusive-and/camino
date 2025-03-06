@@ -101,6 +101,14 @@ sccmap f (Graph g xs) =
 --
 -- Notice that multiple copies of @C@ show up? The intuitive reason is that the number of
 -- copies of @C@ equals the total number of distinct paths through the graph that include @C@.
+--
+-- However, we don't see repetition in a cycle:
+--
+-- >>> reachingMulti $ fromAdjacencies [(A, [B]), (B, [A])]
+-- [Cycle [A,B] (1 :| [0])]
+--
+-- This exception guarantees that we are indeed only counting /paths/; i.e. walks without
+-- repeated vertices.
 
 reachingMulti :: Graph a -> [SCC [a]]
 reachingMulti = sccmap (\x -> [x])
