@@ -3,13 +3,18 @@
 
     inputs = {
         nixpkgs.url = "nixpkgs/nixos-24.11";
+
+        haskellNix = {
+            url = "git+https://git.computeroid.org/xand/haskell-nix.git";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
     };
 
-    outputs = { nixpkgs, self } @ inputs:
+    outputs = { nixpkgs, haskellNix, self } @ inputs:
     let
-        haskellOverlay = import ./overlay.nix;
         overlays = [
-            haskellOverlay
+            haskellNix.overlay
+            self.overlay
         ];
 
         system = "x86_64-linux";
@@ -21,10 +26,14 @@
         inherit (pkgs) haskellPackages;
     in
     {
-        overlays.haskellPackages = haskellOverlay;
+        overlays.default = import ./overlays.nix {
+            inherit inputs;
+        };
+
+        overlay = self.overlays.default;
 
         devShells.${system}.default = haskellPackages.shellFor {
-            packages = final: [ final.computeroid-search ];
+            packages = final: [ final.computeroid ];
 
             nativeBuildInputs = [
                 haskellPackages.cabal-install
