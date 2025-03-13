@@ -26,7 +26,7 @@
         inherit (pkgs) haskellPackages;
     in
     {
-        overlays.default = import ./overlays.nix {
+        overlays = import ./nix/overlays {
             inherit inputs;
         };
 
