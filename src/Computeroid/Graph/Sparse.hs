@@ -3,9 +3,6 @@ module Computeroid.Graph.Sparse where
 import Prelude hiding (map)
 
 import Computeroid.Identify
-import Computeroid.Strategies
-import Control.Monad.Trans.State
-import Control.Monad.Trans.Writer
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Primitive.Array
@@ -43,20 +40,15 @@ map f (Graph outs nodes) = Graph outs (fmap f nodes)
 sparseGraphFromMap :: forall a. Ord a => Map a [a] -> Graph a
 sparseGraphFromMap adjacencyMap =
     let
-        outs  = arrayFromList $ fmap snd adjs
-        nodes = arrayFromList $ fmap fst adjs
+        outs'  = arrayFromList outs
+        nodes' = arrayFromList nodes
     in
-        Graph outs nodes
+        Graph outs' nodes'
     where
-        adjs = (bfsM visit =<< initial) `evalState` (0, mempty)
-
-        visit :: (a, Int) -> Identify a [(a, [Int])]
-        visit (x, v) = do
-            v  <- identify x
-            ws <- traverse identify (Map.findWithDefault [] x adjacencyMap)
-            pure $ [(x, ws)]
-        
-        initial = execWriterT $ traverse identify $ Map.keys adjacencyMap
+        (nodes, outs) =
+            unzip $ Map.elems
+                  $ identifyBfs (\x -> Map.findWithDefault [] x adjacencyMap)
+                  $ Map.keys adjacencyMap
 
 -- | Construct a sparse graph from an adjacency list.
 

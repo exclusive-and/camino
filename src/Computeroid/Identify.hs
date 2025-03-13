@@ -1,5 +1,6 @@
 module Computeroid.Identify where
 
+import Computeroid.Strategies (bfsM)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
@@ -25,3 +26,16 @@ identify x = do
 -- | The context monad for 'identify'.
 
 type Identify a = WriterT [(a, Int)] (State (Int, Map a Int))
+
+-- | Transitively identify values and their successors.
+
+identifyBfs :: forall a. Ord a => (a -> [a]) -> [a] -> Map Int (a, [Int])
+identifyBfs f start = (bfsM visit =<< initial) `evalState` (0, mempty)
+    where
+        visit :: (a, Int) -> Identify a (Map Int (a, [Int]))
+        visit (x, v) = do
+            v  <- identify x
+            ws <- traverse identify (f x)
+            pure $ Map.singleton v (x, ws)
+        
+        initial = execWriterT $ traverse identify $ start
