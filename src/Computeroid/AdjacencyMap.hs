@@ -1,5 +1,9 @@
 module Computeroid.AdjacencyMap where
 
+import Computeroid.Graph.Sparse
+    ( Graph
+    , sparseGraphFromMap
+    )
 import Computeroid.Strategies
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
@@ -16,10 +20,13 @@ newtype AdjacencyMap a = AdjacencyMap
     }
     deriving (Eq, Ord, Show)
 
--- | Construct an adjacency map from an adjacency list.
-
 fromAdjacencies :: Ord a => [(a, [a])] -> AdjacencyMap a
 fromAdjacencies = AdjacencyMap . Map.fromListWith (<>)
+
+-- | Construct a sparse graph from an adjacency map.
+
+sparseGraph :: Ord a => AdjacencyMap a -> Graph a
+sparseGraph (AdjacencyMap adjacencyMap) = sparseGraphFromMap adjacencyMap
 
 -- | Unfold an adjacency map from some initial values and a successor function.
 

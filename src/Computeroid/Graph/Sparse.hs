@@ -1,12 +1,12 @@
 module Computeroid.Graph.Sparse where
 
-import Computeroid.AdjacencyMap
-import Computeroid.AdjacencyMap qualified as AdjacencyMap
+import Prelude hiding (map)
+
 import Computeroid.Identify
 import Computeroid.Strategies
-import Control.Monad.ST
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
+import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Primitive.Array
 
@@ -16,29 +16,35 @@ data Graph a = Graph
     { outs  :: Array [Vertex]   -- ^ Array of outgoing edges from each vertex.
     , nodes :: Array a          -- ^ Array of the original data or name of each vertex.
     }
+    deriving (Eq, Show)
 
 type Vertex = Int
 
--- | Construct a sparse graph from an anonymous adjacency list.
---
--- "Anonymity" in this context means that the vertices are assumed to be identified only with
--- sequential numbers, as they would be after 'identify'ing them.
+instance Functor Graph where
+    fmap = map
 
-fromAdjacenciesAnon :: [[Vertex]] -> Graph Vertex
-fromAdjacenciesAnon adjs =
+-- | Construct a sparse graph from adjacency lists of numbered vertices.
+
+unsafeFromVertices :: [[Vertex]] -> Graph Vertex
+unsafeFromVertices adjs =
     let
         outs  = arrayFromList adjs
         nodes = arrayFromList [0..length outs]
     in
         Graph outs nodes
 
--- | Construct a sparse graph from an adjacency map.
+-- | Map the vertices in a graph, without affecting its overall structure.
 
-fromAdjacencyMap :: forall a. Ord a => AdjacencyMap a -> Graph a
-fromAdjacencyMap (AdjacencyMap adjacencyMap) =
+map :: (a -> b) -> Graph a -> Graph b
+map f (Graph outs nodes) = Graph outs (fmap f nodes)
+
+-- | Construct a sparse graph from an adjacency map. Mainly intended for internal use.
+
+sparseGraphFromMap :: forall a. Ord a => Map a [a] -> Graph a
+sparseGraphFromMap adjacencyMap =
     let
-        outs  = arrayFromList $ map snd adjs
-        nodes = arrayFromList $ map fst adjs
+        outs  = arrayFromList $ fmap snd adjs
+        nodes = arrayFromList $ fmap fst adjs
     in
         Graph outs nodes
     where
@@ -55,4 +61,4 @@ fromAdjacencyMap (AdjacencyMap adjacencyMap) =
 -- | Construct a sparse graph from an adjacency list.
 
 fromAdjacencies :: forall a. Ord a => [(a, [a])] -> Graph a
-fromAdjacencies = fromAdjacencyMap . AdjacencyMap.fromAdjacencies
+fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
