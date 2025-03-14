@@ -24,10 +24,10 @@ sccmap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
 
 sccmap f (Graph g xs) =
     let
-        (sccs, _stack) = runST $ do
+        (sccs, _stack, _depth) = runST $ do
             ns <- newArray (length g) 0
             ys <- newArray (length g) mempty
-            sccfold ([], []) [0..(length g - 1)] `runReaderT` (ns, ys)
+            sccfold ([], [], 0) [0..(length g - 1)] `runReaderT` (ns, ys)
     in
         sccs
     where
@@ -42,19 +42,19 @@ sccmap f (Graph g xs) =
         -- in https://doi.org/10.1145/69622.357187.
         
         go  :: Vertex
-            -> ([SCC b], [Vertex])
+            -> ([SCC b], [Vertex], Int)
             -> ReaderT  (MutableArray s Int, MutableArray s b)
                         (ST s)
-                        ([SCC b], [Vertex])
+                        ([SCC b], [Vertex], Int)
         
-        go v (sccs, stack) = do
+        go v (sccs, stack, depth0) = do
             (ns, ys) <- ask
             -- 1. Compute initial preorder number.
-            let depth = length stack + 1
+            let depth = depth0 + 1
             writeArray ns v depth
             -- 2. Recurse on adjacent vertices.
             let ws = g `indexArray` v
-            (sccs', stack') <- sccfold (sccs, v:stack) ws
+            (sccs', stack', depth') <- sccfold (sccs, v:stack, depth) ws
             -- 3. Compute new preorder.
             ns' <- traverse (readArray ns) ws
             let n' = foldr min depth ns'
@@ -67,21 +67,22 @@ sccmap f (Graph g xs) =
             writeArray ys v y'
             -- 5. Create a new SCC if one is detected.
             if n' == depth
-                then consScc [] v (sccs', stack')
-                else pure (sccs', stack')
+                then consScc [] v (sccs', stack', depth')
+                else pure (sccs', stack', depth')
         
-        consScc scc v (sccs, []) = pure (sccs, [])
+        consScc scc v (sccs, [], _) = pure (sccs, [], 0)
         
-        consScc scc v (sccs, x:stack) = do
+        consScc scc v (sccs, x:stack, depth) = do
             (ns, ys) <- ask
             writeArray ns x maxBound
+            let depth' = depth - 1
             if v == x
                 then do
                     y <- ys `readArray` x
                     if  | not (x `elem` g `indexArray` x)
-                        , null scc  -> pure (Trivial y x : sccs, stack)
-                        | otherwise -> pure (Cycle y (x :| scc) : sccs, stack)
-                else consScc (x:scc) v (sccs, stack)
+                        , null scc  -> pure (Trivial y x : sccs, stack, depth')
+                        | otherwise -> pure (Cycle y (x :| scc) : sccs, stack, depth')
+                else consScc (x:scc) v (sccs, stack, depth' - 1)
 
 {-
 Note [Recurse before calculating the immediate result]
