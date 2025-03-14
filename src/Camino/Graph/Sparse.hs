@@ -1,8 +1,8 @@
-module Computeroid.Graph.Sparse where
+module Camino.Graph.Sparse where
 
 import Prelude hiding (map)
 
-import Computeroid.Identify
+import Camino.Identify
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Primitive.Array

@@ -1,4 +1,4 @@
 final: prev:
 {
-    computeroid = final.callPackage ../computeroid.nix {};
+    camino = final.callPackage ../camino.nix {};
 }

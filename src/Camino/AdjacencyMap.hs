@@ -1,10 +1,10 @@
-module Computeroid.AdjacencyMap where
+module Camino.AdjacencyMap where
 
-import Computeroid.Graph.Sparse
+import Camino.Graph.Sparse
     ( Graph
     , sparseGraphFromMap
     )
-import Computeroid.Strategies
+import Camino.Strategies
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer

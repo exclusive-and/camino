@@ -33,7 +33,7 @@
         overlay = self.overlays.default;
 
         devShells.${system}.default = haskellPackages.shellFor {
-            packages = final: [ final.computeroid ];
+            packages = final: [ final.camino ];
 
             nativeBuildInputs = [
                 haskellPackages.cabal-install

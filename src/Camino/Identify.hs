@@ -1,6 +1,6 @@
-module Computeroid.Identify where
+module Camino.Identify where
 
-import Computeroid.Strategies (bfsM)
+import Camino.Strategies (bfsM)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer

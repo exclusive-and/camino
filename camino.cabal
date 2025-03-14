@@ -1,5 +1,5 @@
 cabal-version:      3.4
-name:               computeroid
+name:               camino
 version:            0.1.0.0
 license:            BSD-3-Clause
 author:             exclusive-and
@@ -23,11 +23,11 @@ library
         TupleSections
         TypeApplications
     exposed-modules:
-        Computeroid.AdjacencyMap
-        Computeroid.Graph.Sparse
-        Computeroid.Identify
-        Computeroid.Reaching
-        Computeroid.Strategies
+        Camino.AdjacencyMap
+        Camino.Graph.Sparse
+        Camino.Identify
+        Camino.Reaching
+        Camino.Strategies
     build-depends:
         base ^>=4.20,
         containers,

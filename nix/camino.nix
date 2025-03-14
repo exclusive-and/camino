@@ -7,7 +7,7 @@
 }:
 
 mkDerivation {
-    pname   = "computeroid";
+    pname   = "camino";
     version = "0.1.0.0";
     src     = ./.;
     libraryHaskellDepends = [

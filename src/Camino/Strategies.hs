@@ -1,4 +1,4 @@
-module Computeroid.Strategies where
+module Camino.Strategies where
 
 import Control.Monad.Trans.Writer
 

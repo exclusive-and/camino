@@ -1,6 +1,6 @@
-module Computeroid.Reaching where
+module Camino.Reaching where
 
-import Computeroid.Graph.Sparse
+import Camino.Graph.Sparse
 import Control.Monad.ST
 import Control.Monad.Trans.Reader
 import Data.Foldable
