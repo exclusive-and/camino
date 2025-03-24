@@ -1,3 +1,5 @@
+-- | Some algorithms for reaching analysis of graphs.
+
 module Camino.Reaching where
 
 import Camino.Graph.Sparse
@@ -9,7 +11,8 @@ import Data.Primitive.Array
 import Data.Set (Set)
 import Data.Set qualified as Set
 
--- | Strongly connected component.
+-- | A strongly connected component. Within the same 'SCC', any vertex can always reach any
+--   other vertex.
 
 data SCC a = Trivial a Vertex | Cycle a (NonEmpty Vertex)
     deriving (Eq, Show)
