@@ -1,5 +1,3 @@
-{ inputs }:
-
 let
     overlays = {
         haskellAddons = final: prev: {

@@ -9,7 +9,7 @@
 mkDerivation {
     pname   = "camino";
     version = "0.1.0.0";
-    src     = ./.;
+    src     = ../.;
     libraryHaskellDepends = [
         base
         containers

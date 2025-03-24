@@ -5,7 +5,7 @@
         nixpkgs.url = "nixpkgs/nixos-24.11";
 
         haskellNix = {
-            url = "git+https://git.computeroid.org/xand/haskell-nix.git";
+            url = "git+https://git.computeroid.org/xand/haskell-nix";
             inputs.nixpkgs.follows = "nixpkgs";
         };
     };
@@ -26,11 +26,11 @@
         inherit (pkgs) haskellPackages;
     in
     {
-        overlays = import ./nix/overlays {
-            inherit inputs;
-        };
+        overlays = import ./nix/overlays;
 
         overlay = self.overlays.default;
+
+        packages.${system}.default = haskellPackages.camino;
 
         devShells.${system}.default = haskellPackages.shellFor {
             packages = final: [ final.camino ];
