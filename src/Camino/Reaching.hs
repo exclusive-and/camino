@@ -22,11 +22,6 @@ instance Functor SCC where
     fmap f (Trivial x v) = Trivial (f x) v
     fmap f (Cycle   x v) = Cycle   (f x) v
 
--- | Compute the strongly connected components of a graph.
-
-sccs :: Graph a -> [SCC ()]
-sccs = contractMap (const ())
-
 -- | \(O(V + E)\). Map the vertices in a graph into a monoid, and contract along its edges
 --   with @('<>')@. Outputs the strongly connected components of the graph because,
 --   within the same 'SCC', the contraction is the same (up to shuffling) for all vertices.
@@ -106,6 +101,11 @@ Contrary to the algorithm in the paper, my 'contractMap' implementation recurses
 computing the immediate result of a vertex. This change is important, because it
 means 'contractMap' won't allow a vertex to contribute to the result of its own SCC twice.
 -}
+
+-- | Compute the strongly connected components of a graph.
+
+sccs :: Graph a -> [SCC ()]
+sccs = contractMap (const ())
 
 -- | Compute the reaching sets of a graph.
 --
