@@ -1,4 +1,4 @@
--- | Some algorithms for reaching analysis of graphs.
+-- | Some algorithms for reaching analysis of graphs, centered around 'contractMap'.
 
 module Camino.Reaching where
 
@@ -11,7 +11,7 @@ import Data.Primitive.Array
 import Data.Set (Set)
 import Data.Set qualified as Set
 
--- | A strongly connected component. Within the same 'SCC', any vertex can always reach any
+-- | A strongly connected component. Within the same 'SCC', every vertex can always reach any
 --   other vertex.
 
 data SCC a = Trivial a Vertex | Cycle a (NonEmpty Vertex)
@@ -21,11 +21,20 @@ instance Functor SCC where
     fmap f (Trivial x v) = Trivial (f x) v
     fmap f (Cycle   x v) = Cycle   (f x) v
 
--- | \(O(V + E)\). Map vertices into a monoid, and combine along edges with @('<>')@.
+-- | Compute the strongly connected components of a graph.
 
-sccmap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
+sccs :: Graph a -> [SCC ()]
+sccs = contractMap (const ())
 
-sccmap f (Graph g xs) =
+-- | \(O(V + E)\). Map the vertices in a graph into a monoid, and contract along its edges
+--   with @('<>')@. Outputs the strongly connected components of the graph because,
+--   within the same 'SCC', the contraction is the same (up to shuffling) for all vertices.
+--
+-- The algorithm assumes that @('<>')@ is somewhat commutative, since the order of contractions
+-- depends on the hidden structure of the input graph.
+
+contractMap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
+contractMap f (Graph g xs) =
     let
         (sccs, _stack, _depth) = runST $ do
             ns <- newArray (length g) 0
@@ -43,6 +52,8 @@ sccmap f (Graph g xs) =
         
         -- This implementation was derived from the outline of the @Digraph@ algorithm given
         -- in https://doi.org/10.1145/69622.357187.
+        --
+        -- Both my implementation and the one in the paper are variants of Tarjan's algorithm.
         
         go  :: Vertex
             -> ([SCC b], [Vertex], Int)
@@ -90,10 +101,24 @@ sccmap f (Graph g xs) =
 {-
 Note [Recurse before calculating the immediate result]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Contrary to the algorithm in the paper, my 'sccmap' implementation recurses /before/
+Contrary to the algorithm in the paper, my 'contractMap' implementation recurses /before/
 computing the immediate result of a vertex. This change is important, because it
-means 'sccmap' won't allow a vertex to contribute to the result of its own SCC twice.
+means 'contractMap' won't allow a vertex to contribute to the result of its own SCC twice.
 -}
+
+-- | Compute the reaching sets of a graph.
+--
+-- ==== __Examples__
+--
+-- Here's a simple example where we compute the reaching sets of a small graph:
+--
+-- >>> data ABC = A | B | C deriving (Eq, Ord, Show)
+-- >>>
+-- >>> reachingSets $ fromAdjacencies [(A, [B, C]), (B, [C]), (C, [])]
+-- [Trivial (fromList [A,B,C]) 0,Trivial (fromList [B,C]) 1,Trivial (fromList [C]) 2]
+
+reachingSets :: Ord a => Graph a -> [SCC (Set a)]
+reachingSets = contractMap (Set.singleton)
 
 -- | Like 'reachingSets' with repetition.
 --
@@ -119,18 +144,4 @@ means 'sccmap' won't allow a vertex to contribute to the result of its own SCC t
 -- repeated vertices.
 
 reachingMulti :: Graph a -> [SCC [a]]
-reachingMulti = sccmap (\x -> [x])
-
--- | Compute the reaching sets of a graph.
---
--- ==== __Examples__
---
--- Here's a simple example where we compute the reaching sets of a small graph:
---
--- >>> data ABC = A | B | C deriving (Eq, Ord, Show)
--- >>>
--- >>> reachingSets $ fromAdjacencies [(A, [B, C]), (B, [C]), (C, [])]
--- [Trivial (fromList [A,B,C]) 0,Trivial (fromList [B,C]) 1,Trivial (fromList [C]) 2]
-
-reachingSets :: Ord a => Graph a -> [SCC (Set a)]
-reachingSets = sccmap (Set.singleton)
+reachingMulti = contractMap (\x -> [x])
