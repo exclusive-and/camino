@@ -33,7 +33,7 @@ contractMap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
 contractMap f (Graph g xs) =
     let
         (sccs, _stack, _depth) = runST $ do
-            ns <- newArray (length g) 0
+            ns <- newArray (length g) (-1)
             ys <- newArray (length g) mempty
             sccfold ([], [], 0) [0..(length g - 1)] `runReaderT` (ns, ys)
     in
@@ -44,7 +44,7 @@ contractMap f (Graph g xs) =
         whenInteresting f v s = do
             (ns, _) <- ask
             n <- ns `readArray` v
-            if n == 0 then f v s else pure s
+            if n < 0 then f v s else pure s
         
         go  :: Vertex
             -> ([SCC b], [Vertex], Int)
@@ -57,14 +57,13 @@ contractMap f (Graph g xs) =
         --
         -- Both my implementation and the one in the paper are variants of Tarjan's algorithm.
 
-        go v (sccs, stack, depth0) = do
+        go v (sccs, stack, depth) = do
             (ns, ys) <- ask
             -- 1. Compute initial preorder number.
-            let depth = depth0 + 1
             writeArray ns v depth
             -- 2. Recurse on adjacent vertices.
             let ws = g `indexArray` v
-            (sccs', stack', depth') <- sccfold (sccs, v:stack, depth) ws
+            (sccs', stack', depth') <- sccfold (sccs, v:stack, depth + 1) ws
             -- 3. Compute new preorder.
             ns' <- traverse (readArray ns) ws
             let n' = foldr min depth ns'
@@ -77,22 +76,24 @@ contractMap f (Graph g xs) =
             writeArray ys v y'
             -- 5. Create a new SCC if one is detected.
             if n' == depth
-                then consScc [] v (sccs', stack', depth')
+                then popScc [] v (sccs', stack', depth')
                 else pure (sccs', stack', depth')
         
-        consScc scc v (sccs, [], _) = pure (sccs, [], 0)
-        
-        consScc scc v (sccs, x:stack, depth) = do
+        popScc scc v (sccs, []     , _depth) = pure (sccs, [], 0)
+        popScc scc v (sccs, x:stack,  depth) = do
             (ns, ys) <- ask
             writeArray ns x maxBound
             let depth' = depth - 1
-            if v == x
-                then do
-                    y <- ys `readArray` x
-                    if  | not (x `elem` g `indexArray` x)
-                        , null scc  -> pure (Trivial y x : sccs, stack, depth')
-                        | otherwise -> pure (Cycle y (x :| scc) : sccs, stack, depth')
-                else consScc (x:scc) v (sccs, stack, depth' - 1)
+            if v == x then do
+                y <- ys `readArray` x
+                -- Need to make sure that every vertex in the SCC gets the same final result!
+                forM_ scc $ \v -> writeArray ys v y
+                pure (createScc scc x y : sccs, stack, depth')
+            else
+                popScc (x:scc) v (sccs, stack, depth')
+        
+        createScc []  x y | x `notElem` (g `indexArray` x) = Trivial y x
+        createScc scc x y = Cycle y (x :| scc)
 
 {-
 Note [Recurse before calculating the immediate result]
