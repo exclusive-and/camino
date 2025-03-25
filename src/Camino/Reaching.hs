@@ -7,6 +7,7 @@ import Control.Monad.ST
 import Control.Monad.Trans.Reader
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Primitive.Array
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -145,3 +146,28 @@ reachingSets = contractMap (Set.singleton)
 
 reachingMulti :: Graph a -> [SCC [a]]
 reachingMulti = contractMap (\x -> [x])
+
+-- | Compute the /condensation/ of a graph.
+--
+-- The condensation of a graph is a new graph whose vertices each represent an entire 'SCC'
+-- in the input graph.
+
+condensation :: Monoid a => Graph a -> Graph (SCC a)
+condensation g0@(Graph edges0 nodes0) =
+    let
+        sccs = contractMap id g0
+
+        nodes1 = createArray (length nodes0) (-1) $ \nodes -> do
+            forM_ (zip [0..] sccs) $ \(n, scc) -> do
+                forM_ (sccVerts scc) $ \v -> writeArray nodes v n
+
+        (edges2, nodes2) = unzip $ fmap (\(n, scc) -> (go nodes1 n scc, scc)) $ zip [0..] sccs
+    in
+        Graph (arrayFromList edges2) (arrayFromList nodes2)
+    where
+        sccVerts (Trivial _ v ) = [v]
+        sccVerts (Cycle   _ vs) = NE.toList vs
+
+        go _nodes1 _ (Trivial _ v ) = indexArray edges0 v
+        go  nodes1 n (Cycle   _ vs) =
+            filter (/= n) $ fmap (indexArray nodes1) $ concatMap (indexArray edges0) vs
