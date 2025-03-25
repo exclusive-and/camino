@@ -51,17 +51,17 @@ contractMap f (Graph g xs) =
             n <- ns `readArray` v
             if n == 0 then f v s else pure s
         
-        -- This implementation was derived from the outline of the @Digraph@ algorithm given
-        -- in https://doi.org/10.1145/69622.357187.
-        --
-        -- Both my implementation and the one in the paper are variants of Tarjan's algorithm.
-        
         go  :: Vertex
             -> ([SCC b], [Vertex], Int)
             -> ReaderT  (MutableArray s Int, MutableArray s b)
                         (ST s)
                         ([SCC b], [Vertex], Int)
         
+        -- This implementation was derived from the outline of the @Digraph@ algorithm given
+        -- in https://doi.org/10.1145/69622.357187.
+        --
+        -- Both my implementation and the one in the paper are variants of Tarjan's algorithm.
+
         go v (sccs, stack, depth0) = do
             (ns, ys) <- ask
             -- 1. Compute initial preorder number.
