@@ -3,42 +3,21 @@
 
     inputs = {
         nixpkgs.url = "nixpkgs/nixos-24.11";
-
-        haskellNix = {
-            url = "git+https://git.computeroid.org/xand/haskell-nix";
-            inputs.nixpkgs.follows = "nixpkgs";
-        };
+        flake-parts.url = "github:hercules-ci/flake-parts";
+        haskell.url = "git+https://git.computeroid.org/xand/haskell-nix";
     };
 
-    outputs = { nixpkgs, haskellNix, self } @ inputs:
-    let
-        overlays = [
-            haskellNix.overlay
-            self.overlay
-        ];
+    outputs = { flake-parts, haskell, self, ... } @ inputs:
+        flake-parts.lib.mkFlake { inherit inputs; } {
+            imports = [ haskell.flakeModule ];
 
-        system = "x86_64-linux";
-
-        pkgs = import nixpkgs {
-            inherit overlays system;
+            perSystem = { pkgs, ... }: {
+                haskell.default = {
+                    hackage = pkgs.haskell.packages.ghc9101;
+                    packages.camino.source = "${self}/camino.nix";
+                };
+            };
+            
+            systems = [ "x86_64-linux" ];
         };
-
-        inherit (pkgs) haskellPackages;
-    in
-    {
-        overlays = import ./nix/overlays;
-
-        overlay = self.overlays.default;
-
-        packages.${system}.default = haskellPackages.camino;
-
-        devShells.${system}.default = haskellPackages.shellFor {
-            packages = final: [ final.camino ];
-
-            nativeBuildInputs = [
-                haskellPackages.cabal-install
-                haskellPackages.haskell-language-server
-            ];
-        };
-    };
 }
