@@ -7,14 +7,14 @@
         haskell.url = "git+https://git.computeroid.org/xand/haskell-nix";
     };
 
-    outputs = { flake-parts, haskell, self, ... } @ inputs:
+    outputs = { flake-parts, haskell, ... } @ inputs:
         flake-parts.lib.mkFlake { inherit inputs; } {
             imports = [ haskell.flakeModule ];
 
             perSystem = { pkgs, ... }: {
                 haskell.default = {
                     hackage = pkgs.haskell.packages.ghc9101;
-                    packages.camino.source = "${self}/camino.nix";
+                    packages.camino.source = ./camino.nix;
                 };
             };
             
