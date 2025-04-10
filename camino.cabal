@@ -1,14 +1,39 @@
-cabal-version:      3.4
-name:               camino
-version:            0.2.0.0
-license:            BSD-3-Clause
-author:             exclusive-and
-maintainer:         exclusiveandgate@gmail.com
-build-type:         Simple
+cabal-version: 3.4
+
+name: camino
+homepage: https://git.computeroid.org/xand/camino
+version: 0.2.0.0
+synopsis: Algorithms for graph-like data
+description:
+    Camino is a curated repository of algorithms (and some data structures) that I've implemented
+    to solve roughly graph-like computational problems.
+
+author: Simon Lovell Bart <exclusiveandgate@gmail.com>
+maintainer: Simon Lovell Bart <exclusiveandgate@gmail.com>
+license: BSD-3-Clause
+license-file: LICENSE
+
+extra-doc-files:
+    README.md
+
+build-type: Simple
 
 library
-    hs-source-dirs:     src
-    default-language:   Haskell2010
+    default-language: Haskell2010
+    hs-source-dirs: src
+    exposed-modules:
+        Camino.AdjacencyMap
+        Camino.Graph.Sparse
+        Camino.Identify
+        Camino.Reaching
+        Camino.Strategies
+
+    build-depends:
+        base ^>=4.20,
+        containers,
+        primitive,
+        transformers
+
     default-extensions:
         DeriveFoldable
         GeneralizedNewtypeDeriving
@@ -22,14 +47,3 @@ library
         StandaloneDeriving
         TupleSections
         TypeApplications
-    exposed-modules:
-        Camino.AdjacencyMap
-        Camino.Graph.Sparse
-        Camino.Identify
-        Camino.Reaching
-        Camino.Strategies
-    build-depends:
-        base ^>=4.20,
-        containers,
-        primitive,
-        transformers
