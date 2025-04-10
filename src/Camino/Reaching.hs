@@ -72,7 +72,7 @@ contractMap f (Graph g xs) =
             --    See Note [Recurse before calculating the immediate result].
             let y = f (xs `indexArray` v)
             ys' <- traverse (readArray ys) ws
-            let y' = foldr (<>) y ys'
+            let y' = mconcat (y:ys')
             writeArray ys v y'
             -- 5. Create a new SCC if one is detected.
             if n' == depth
@@ -132,7 +132,7 @@ reachingSets = contractMap (Set.singleton)
 -- >>> data ABC = A | B | C deriving (Eq, Ord, Show)
 -- >>>
 -- >>> reachingMulti $ fromAdjacencies [(A, [B, C]), (B, [C]), (C, [])]
--- [Trivial [C,B,C,A] 0,Trivial [C,B] 1,Trivial [C] 2]
+-- [Trivial [A,B,C,C] 0,Trivial [B,C] 1,Trivial [C] 2]
 --
 -- Notice that multiple copies of @C@ show up? The intuitive reason is that the number of
 -- copies of @C@ equals the total number of distinct paths through the graph that include @C@.
@@ -140,7 +140,7 @@ reachingSets = contractMap (Set.singleton)
 -- However, we don't see repetition in a cycle:
 --
 -- >>> reachingMulti $ fromAdjacencies [(A, [B]), (B, [A])]
--- [Cycle [A,B] (1 :| [0])]
+-- [Cycle [B,A] (1 :| [0])]
 --
 -- This exception guarantees that we are indeed only counting /paths/; i.e. walks without
 -- repeated vertices.
