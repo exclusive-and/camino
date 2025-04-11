@@ -154,21 +154,27 @@ reachingMulti = contractMap (\x -> [x])
 -- in the input graph.
 
 condensation :: Monoid a => Graph a -> Graph (SCC a)
-condensation g0@(Graph edges0 nodes0) =
+condensation input@Graph{edges} =
     let
-        sccs = contractMap id g0
-
-        nodes1 = createArray (length nodes0) (-1) $ \nodes -> do
-            forM_ (zip [0..] sccs) $ \(n, scc) -> do
-                forM_ (sccVerts scc) $ \v -> writeArray nodes v n
-
-        (edges2, nodes2) = unzip $ fmap (\(n, scc) -> (go nodes1 n scc, scc)) $ zip [0..] sccs
+        sccs = zip [0..] $ contractMap id input
+        labels = labelSccs sccs
+        (edges', nodes) = unzip $ mapScc labels <$> sccs
     in
-        Graph (arrayFromList edges2) (arrayFromList nodes2)
+        Graph (arrayFromList edges') (arrayFromList nodes)
     where
+        mapScc :: Array Vertex -> (Int, SCC a) -> ([Vertex], SCC a)
+        mapScc labels (n, scc) = (mapEdges labels n scc, scc)
+
+        mapEdges _labels _ (Trivial _ v ) = indexArray edges v
+        mapEdges  labels n (Cycle   _ vs) =
+            filter (/= n) $ fmap (indexArray labels) $ concatMap (indexArray edges) vs
+
+        labelSccs :: [(Vertex, SCC a)] -> Array Vertex
+        labelSccs sccs =
+            createArray (length input.nodes) (-1) $
+                \labels -> traverse_ (uncurry $ labelScc labels) sccs
+
+        labelScc labels n = traverse_ (\v -> writeArray labels v n) . sccVerts
+
         sccVerts (Trivial _ v ) = [v]
         sccVerts (Cycle   _ vs) = NE.toList vs
-
-        go _nodes1 _ (Trivial _ v ) = indexArray edges0 v
-        go  nodes1 n (Cycle   _ vs) =
-            filter (/= n) $ fmap (indexArray nodes1) $ concatMap (indexArray edges0) vs
