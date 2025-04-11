@@ -10,7 +10,7 @@ import Data.Primitive.Array
 -- | Sparse directed graphs.
 
 data Graph a = Graph
-    { outs  :: Array [Vertex]   -- ^ Array of outgoing edges from each vertex.
+    { edges :: Array [Vertex]   -- ^ Array of outgoing edges from each vertex.
     , nodes :: Array a          -- ^ Array of the original data or name of each vertex.
     }
     deriving (Eq, Show)
@@ -40,12 +40,12 @@ map f (Graph outs nodes) = Graph outs (fmap f nodes)
 sparseGraphFromMap :: forall a. Ord a => Map a [a] -> Graph a
 sparseGraphFromMap adjacencyMap =
     let
-        outs'  = arrayFromList outs
+        edges' = arrayFromList edges
         nodes' = arrayFromList nodes
     in
-        Graph outs' nodes'
+        Graph edges' nodes'
     where
-        (nodes, outs) =
+        (nodes, edges) =
             unzip $ Map.elems
                   $ identifyBfs (\x -> Map.findWithDefault [] x adjacencyMap)
                   $ Map.keys adjacencyMap
