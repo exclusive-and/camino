@@ -67,12 +67,12 @@ fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
 reflexive :: Graph a -> Graph a
 reflexive Graph{edges, nodes} =
     let
-        edges' = createArray (length edges) [] $ go (length edges)
+        edges' = createArray (length edges) [] $ go (length edges - 1)
     in
         Graph edges' nodes
     where
         go n edges' =
-            if n <= 0 then
+            if n < 0 then
                 pure ()
             else do
                 let ws  = edges `indexArray` n
