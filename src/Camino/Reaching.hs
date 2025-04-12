@@ -5,6 +5,7 @@ module Camino.Reaching where
 import Camino.Graph.Sparse
 import Control.Monad.ST
 import Control.Monad.Trans.Reader
+import Data.Bifunctor
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -154,27 +155,27 @@ reachingMulti = contractMap (\x -> [x])
 -- in the input graph.
 
 condensation :: Monoid a => Graph a -> Graph (SCC a)
-condensation input@Graph{edges} =
+condensation input@Graph{edges, nodes} =
     let
         sccs = zip [0..] $ contractMap id input
         labels = labelSccs sccs
-        (edges', nodes) = unzip $ mapScc labels <$> sccs
+        (edges', nodes') = unzip $ go labels <$> sccs
     in
-        Graph (arrayFromList edges') (arrayFromList nodes)
+        Graph (arrayFromList edges') (arrayFromList nodes')
     where
-        mapScc :: Array Vertex -> (Int, SCC a) -> ([Vertex], SCC a)
-        mapScc labels (n, scc) = (mapEdges labels n scc, scc)
+        go :: Array Vertex -> (Int, SCC a) -> ([Vertex], SCC a)
+        go labels (n, scc) = (mapEdges labels n scc, scc)
 
         mapEdges _labels _ (Trivial _ v ) = indexArray edges v
         mapEdges  labels n (Cycle   _ vs) =
             filter (/= n) $ fmap (indexArray labels) $ concatMap (indexArray edges) vs
 
         labelSccs :: [(Vertex, SCC a)] -> Array Vertex
-        labelSccs sccs =
-            createArray (length input.nodes) (-1) $
-                \labels -> traverse_ (uncurry $ labelScc labels) sccs
-
-        labelScc labels n = traverse_ (\v -> writeArray labels v n) . sccVerts
+        labelSccs sccs = runArray $ do
+            labels <- newArray (length nodes) (-1)
+            let f n = traverse_ (\v -> writeArray labels v n)
+            traverse_ (uncurry f) $ second sccVerts <$> sccs
+            pure labels
 
         sccVerts (Trivial _ v ) = [v]
         sccVerts (Cycle   _ vs) = NE.toList vs
@@ -185,13 +186,15 @@ transitive :: Graph a -> Graph a
 transitive input@Graph{nodes} =
     let
         sccs = reachingSets (structure input)
-        edges = createArray (length input.edges) [] $ buildEdges sccs
     in
-        Graph edges nodes
+        Graph (go sccs) nodes
     where
-        buildEdges sccs edges = forM_ sccs $ \scc -> go edges scc
+        go sccs = runArray $ do
+            edges <- newArray (length nodes) []
+            traverse_ (propagate edges) sccs
+            pure edges
 
-        go edges (Trivial rs v ) = writeArray edges v $ Set.toList rs
-        go edges (Cycle   rs vs) = do
+        propagate edges (Trivial rs v ) = writeArray edges v $ Set.toList rs
+        propagate edges (Cycle   rs vs) = do
             let rs' = Set.toList rs
             forM_ vs $ \v -> writeArray edges v rs'

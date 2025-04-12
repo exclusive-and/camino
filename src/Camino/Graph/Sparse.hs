@@ -22,44 +22,25 @@ type Vertex = Int
 instance Functor Graph where
     fmap = map
 
--- | Construct a sparse graph from adjacency lists of numbered vertices.
+-- | Map the vertices in a graph, without affecting its overall structure.
 
-unsafeFromVertices :: [[Vertex]] -> Graph Vertex
-unsafeFromVertices adjs =
-    let
-        outs  = arrayFromList adjs
-        nodes = arrayFromList [0..length outs]
-    in
-        Graph outs nodes
+map :: (a -> b) -> Graph a -> Graph b
+map f Graph{edges, nodes} = Graph edges (fmap f nodes)
 
 -- | Create a new graph with only the raw internal structure of the input graph.
 
 structure :: Graph a -> Graph Vertex
 structure Graph{edges} = Graph edges (arrayFromList [0..length edges])
 
--- | Create a new graph whose edges all face in the opposite direction of their original
---   counterpart in the input graph.
+-- | Construct a sparse graph from adjacency lists of numbered vertices.
 
-opposite :: Graph a -> Graph a
-opposite Graph{edges, nodes} =
+unsafeFromVertices :: [[Vertex]] -> Graph Vertex
+unsafeFromVertices adjs =
     let
-        edges' = createArray (length edges) [] $ go (length edges - 1)
+        edges = arrayFromList adjs
+        nodes = arrayFromList [0..length edges]
     in
-        Graph edges' nodes
-    where
-        go n edges' =
-            if n < 0 then
-                pure ()
-            else do
-                let vs = edges `indexArray` n
-                ws <- edges' `readArray` n
-                traverse_ (\v -> writeArray edges' v (n:ws)) vs
-                go (n - 1) edges'
-
--- | Map the vertices in a graph, without affecting its overall structure.
-
-map :: (a -> b) -> Graph a -> Graph b
-map f (Graph outs nodes) = Graph outs (fmap f nodes)
+        Graph edges nodes
 
 -- | Construct a sparse graph from an adjacency map. Mainly intended for internal use.
 
@@ -81,20 +62,34 @@ sparseGraphFromMap adjacencyMap =
 fromAdjacencies :: forall a. Ord a => [(a, [a])] -> Graph a
 fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
 
+-- | Create a new graph whose edges all face in the opposite direction of their original
+--   counterpart in the input graph.
+
+opposite :: Graph a -> Graph a
+opposite input = Graph (go $ structure input) input.nodes
+    where
+        go Graph{edges, nodes} = runArray $ do
+            edges' <- newArray (length edges) []
+            let f v = traverse_ (flip (append edges') v) (edges `indexArray` v)
+            traverse_ f nodes
+            pure edges'
+
+        append arr i x = do
+            xs <- arr `readArray` i
+            writeArray arr i (x:xs)
+
 -- | Compute the /reflexive closure/ of a graph.
 
 reflexive :: Graph a -> Graph a
-reflexive Graph{edges, nodes} =
-    let
-        edges' = createArray (length edges) [] $ go (length edges - 1)
-    in
-        Graph edges' nodes
+reflexive input = Graph (go $ structure input) input.nodes
     where
-        go n edges' =
-            if n < 0 then
-                pure ()
-            else do
-                let ws  = edges `indexArray` n
-                    ws' = Set.toList $ Set.fromList (n:ws)
-                writeArray edges' n ws'
-                go (n - 1) edges'
+        go Graph{edges, nodes} = runArray $ do
+            edges' <- newArray (length edges) []
+            copyArray edges' 0 edges 0 (length edges)
+            traverse_ (amend edges') nodes
+            pure edges'
+
+        amend arr i = do
+            ws <- arr `readArray` i
+            let ws' = Set.toList $ Set.fromList (i:ws)
+            writeArray arr i ws'
