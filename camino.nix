@@ -8,7 +8,7 @@
 
 mkDerivation {
     pname   = "camino";
-    version = "0.3.0.0";
+    version = "0.4.0.0";
     src     = ./.;
     libraryHaskellDepends = [
         base
