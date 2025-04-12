@@ -178,3 +178,20 @@ condensation input@Graph{edges} =
 
         sccVerts (Trivial _ v ) = [v]
         sccVerts (Cycle   _ vs) = NE.toList vs
+
+-- | Compute the /transitive closure/ of a graph.
+
+transitive :: Graph Vertex -> Graph Vertex
+transitive input@Graph{nodes} =
+    let
+        sccs = reachingSets input
+        edges = createArray (length input.edges) [] $ buildEdges sccs
+    in
+        Graph edges nodes
+    where
+        buildEdges sccs edges = forM_ sccs $ \scc -> go edges scc
+
+        go edges (Trivial rs v ) = writeArray edges v $ Set.toList rs
+        go edges (Cycle   rs vs) = do
+            let rs' = Set.toList rs
+            forM_ vs $ \v -> writeArray edges v rs'
