@@ -3,9 +3,11 @@ module Camino.Graph.Sparse where
 import Prelude hiding (map)
 
 import Camino.Identify
+import Data.Foldable
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Primitive.Array
+import Data.Set qualified as Set
 
 -- | Sparse directed graphs.
 
@@ -54,3 +56,21 @@ sparseGraphFromMap adjacencyMap =
 
 fromAdjacencies :: forall a. Ord a => [(a, [a])] -> Graph a
 fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
+
+-- | Compute the /reflexive closure/ of a graph.
+
+reflexive :: Graph a -> Graph a
+reflexive Graph{edges, nodes} =
+    let
+        edges' = createArray (length edges) [] $ go (length edges)
+    in
+        Graph edges' nodes
+    where
+        go n edges' =
+            if n <= 0 then
+                pure ()
+            else do
+                let ws  = edges `indexArray` n
+                    ws' = Set.toList $ Set.fromList (n:ws)
+                writeArray edges' n ws'
+                go (n - 1) edges'
