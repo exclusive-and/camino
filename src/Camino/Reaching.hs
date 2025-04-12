@@ -181,10 +181,10 @@ condensation input@Graph{edges} =
 
 -- | Compute the /transitive closure/ of a graph.
 
-transitive :: Graph Vertex -> Graph Vertex
+transitive :: Graph a -> Graph a
 transitive input@Graph{nodes} =
     let
-        sccs = reachingSets input
+        sccs = reachingSets (structure input)
         edges = createArray (length input.edges) [] $ buildEdges sccs
     in
         Graph edges nodes
