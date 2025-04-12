@@ -37,6 +37,25 @@ unsafeFromVertices adjs =
 structure :: Graph a -> Graph Vertex
 structure Graph{edges} = Graph edges (arrayFromList [0..length edges])
 
+-- | Create a new graph whose edges all face in the opposite direction of their original
+--   counterpart in the input graph.
+
+opposite :: Graph a -> Graph a
+opposite Graph{edges, nodes} =
+    let
+        edges' = createArray (length edges) [] $ go (length edges - 1)
+    in
+        Graph edges' nodes
+    where
+        go n edges' =
+            if n < 0 then
+                pure ()
+            else do
+                let vs = edges `indexArray` n
+                ws <- edges' `readArray` n
+                traverse_ (\v -> writeArray edges' v (n:ws)) vs
+                go (n - 1) edges'
+
 -- | Map the vertices in a graph, without affecting its overall structure.
 
 map :: (a -> b) -> Graph a -> Graph b
