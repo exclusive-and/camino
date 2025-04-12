@@ -31,12 +31,14 @@ instance Functor SCC where
 -- depends on the hidden structure of the input graph.
 
 contractMap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
-contractMap f (Graph g xs) =
+contractMap f Graph{edges, nodes} =
     let
+        size = length edges
+
         (sccs, _stack, _depth) = runST $ do
-            ns <- newArray (length g) (-1)
-            ys <- newArray (length g) mempty
-            sccfold ([], [], 0) [0..(length g - 1)] `runReaderT` (ns, ys)
+            ns <- newArray size (-1)
+            ys <- newArray size mempty
+            sccfold ([], [], 0) [0..size - 1] `runReaderT` (ns, ys)
     in
         sccs
     where
@@ -63,7 +65,7 @@ contractMap f (Graph g xs) =
             -- 1. Compute initial preorder number.
             writeArray ns v depth
             -- 2. Recurse on adjacent vertices.
-            let ws = g `indexArray` v
+            let ws = edges `indexArray` v
             (sccs', stack', depth') <- sccfold (sccs, v:stack, depth + 1) ws
             -- 3. Compute new preorder.
             ns' <- traverse (readArray ns) ws
@@ -71,7 +73,7 @@ contractMap f (Graph g xs) =
             writeArray ns v n'
             -- 4. Compute immediate and combined results.
             --    See Note [Recurse before calculating the immediate result].
-            let y = f (xs `indexArray` v)
+            let y = f (nodes `indexArray` v)
             ys' <- traverse (readArray ys) ws
             let y' = mconcat (y:ys')
             writeArray ys v y'
@@ -93,7 +95,7 @@ contractMap f (Graph g xs) =
             else
                 popScc (x:scc) v (sccs, stack, depth')
         
-        createScc []  x y | x `notElem` (g `indexArray` x) = Trivial y x
+        createScc []  x y | x `notElem` (edges `indexArray` x) = Trivial y x
         createScc scc x y = Cycle y (x :| scc)
 
 {-
@@ -155,30 +157,42 @@ reachingMulti = contractMap (\x -> [x])
 -- in the input graph.
 
 condensation :: Monoid a => Graph a -> Graph (SCC a)
-condensation input@Graph{edges, nodes} =
+condensation input@Graph{edges} =
     let
         sccs = zip [0..] $ contractMap id input
-        labels = labelSccs sccs
-        (edges', nodes') = unzip $ go labels <$> sccs
+        nodes' = arrayFromList sccs
     in
-        Graph (arrayFromList edges') (arrayFromList nodes')
+        Graph (go nodes') (snd <$> nodes')
     where
-        go :: Array Vertex -> (Int, SCC a) -> ([Vertex], SCC a)
-        go labels (n, scc) = (mapEdges labels n scc, scc)
-
-        mapEdges _labels _ (Trivial _ v ) = indexArray edges v
-        mapEdges  labels n (Cycle   _ vs) =
-            filter (/= n) $ fmap (indexArray labels) $ concatMap (indexArray edges) vs
-
-        labelSccs :: [(Vertex, SCC a)] -> Array Vertex
-        labelSccs sccs = runArray $ do
-            labels <- newArray (length nodes) (-1)
-            let f n = traverse_ (\v -> writeArray labels v n)
-            traverse_ (uncurry f) $ second sccVerts <$> sccs
-            pure labels
+        go nodes = runArray $ do
+            -- 1. Build an association, for each input graph node, to the index of the node's
+            --    SCC, as computed by 'contractMap'.
+            labels <- newArray (length edges) (-1)
+            traverse_ (uncurry labelVerts) nodes `runReaderT` labels
+            labels' <- unsafeFreezeArray labels
+            -- 2. Translate the structure of the input graph using the associations above.
+            edges' <- newArray (length nodes) []
+            traverse_ (uncurry rebuild) nodes `runReaderT` (labels', edges')
+            pure edges'
+        
+        labelVerts n scc = do
+            labels <- ask
+            traverse_ (\v -> writeArray labels v n) $ sccVerts scc
 
         sccVerts (Trivial _ v ) = [v]
         sccVerts (Cycle   _ vs) = NE.toList vs
+
+        rebuild n (Trivial _ v) = do
+            (labels, edges') <- ask
+            let ws  = edges `indexArray` v
+                ws' = indexArray labels <$> ws
+            writeArray edges' n ws'
+        
+        rebuild n (Cycle _ vs) = do
+            (labels, edges') <- ask
+            let ws  = concatMap (indexArray edges) vs
+                ws' = filter (/= n) $ indexArray labels <$> ws
+            writeArray edges' n ws'
 
 -- | Compute the /transitive closure/ of a graph.
 
@@ -190,11 +204,15 @@ transitive input@Graph{nodes} =
         Graph (go sccs) nodes
     where
         go sccs = runArray $ do
-            edges <- newArray (length nodes) []
-            traverse_ (propagate edges) sccs
-            pure edges
+            edges' <- newArray (length nodes) []
+            traverse_ propagate sccs `runReaderT` edges'
+            pure edges'
 
-        propagate edges (Trivial rs v ) = writeArray edges v $ Set.toList rs
-        propagate edges (Cycle   rs vs) = do
+        propagate (Trivial rs v ) = do
+            edges' <- ask
+            writeArray edges' v $ Set.toList rs
+
+        propagate (Cycle rs vs) = do
+            edges' <- ask
             let rs' = Set.toList rs
-            forM_ vs $ \v -> writeArray edges v rs'
+            traverse_ (\v -> writeArray edges' v rs') vs

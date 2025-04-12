@@ -3,6 +3,8 @@ module Camino.Graph.Sparse where
 import Prelude hiding (map)
 
 import Camino.Identify
+import Control.Monad.ST
+import Control.Monad.Trans.Reader
 import Data.Foldable
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -32,6 +34,25 @@ map f Graph{edges, nodes} = Graph edges (fmap f nodes)
 structure :: Graph a -> Graph Vertex
 structure Graph{edges} = Graph edges (arrayFromList [0..length edges])
 
+-- | Modify the internal structure of a graph. Doesn't touch nodes at all.
+
+traverseStructure ::
+       (forall s. Vertex -> [Vertex] -> ReaderT (MutableArray s [Vertex]) (ST s) ())
+    -> Graph a
+    -> Graph a
+
+traverseStructure f input =
+    let
+        Graph{edges, nodes} = structure input
+
+        go = runArray $ do
+            edges' <- newArray (length edges) []
+            let g v = f v (edges `indexArray` v)
+            traverse_ g nodes `runReaderT` edges'
+            pure edges'
+    in
+        Graph go input.nodes
+    
 -- | Construct a sparse graph from adjacency lists of numbered vertices.
 
 unsafeFromVertices :: [[Vertex]] -> Graph Vertex
@@ -66,30 +87,23 @@ fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
 --   counterpart in the input graph.
 
 opposite :: Graph a -> Graph a
-opposite input = Graph (go $ structure input) input.nodes
+opposite = traverseStructure go
     where
-        go Graph{edges, nodes} = runArray $ do
-            edges' <- newArray (length edges) []
-            let f v = traverse_ (flip (append edges') v) (edges `indexArray` v)
-            traverse_ f nodes
-            pure edges'
+        go v ws = traverse_ (invert v) ws
 
-        append arr i x = do
-            xs <- arr `readArray` i
-            writeArray arr i (x:xs)
+        invert :: Vertex -> Vertex -> ReaderT (MutableArray s [Vertex]) (ST s) ()
+        invert v w = do
+            arr <- ask
+            vs <- arr `readArray` w
+            writeArray arr w (v:vs)
 
 -- | Compute the /reflexive closure/ of a graph.
 
 reflexive :: Graph a -> Graph a
-reflexive input = Graph (go $ structure input) input.nodes
+reflexive = traverseStructure go
     where
-        go Graph{edges, nodes} = runArray $ do
-            edges' <- newArray (length edges) []
-            copyArray edges' 0 edges 0 (length edges)
-            traverse_ (amend edges') nodes
-            pure edges'
-
-        amend arr i = do
-            ws <- arr `readArray` i
-            let ws' = Set.toList $ Set.fromList (i:ws)
-            writeArray arr i ws'
+        go :: Vertex -> [Vertex] -> ReaderT (MutableArray s [Vertex]) (ST s) ()
+        go v ws = do
+            arr <- ask
+            let ws' = Set.toList $ Set.fromList (v:ws)
+            writeArray arr v ws'
