@@ -32,6 +32,11 @@ unsafeFromVertices adjs =
     in
         Graph outs nodes
 
+-- | Create a new graph with only the raw internal structure of the input graph.
+
+structure :: Graph a -> Graph Vertex
+structure Graph{edges} = Graph edges (arrayFromList [0..length edges])
+
 -- | Map the vertices in a graph, without affecting its overall structure.
 
 map :: (a -> b) -> Graph a -> Graph b
