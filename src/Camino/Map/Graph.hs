@@ -1,6 +1,6 @@
-module Camino.AdjacencyMap where
+module Camino.Map.Graph where
 
-import Camino.Graph.Sparse
+import Camino.Sparse.Graph
     ( Graph
     , sparseGraphFromMap
     )
