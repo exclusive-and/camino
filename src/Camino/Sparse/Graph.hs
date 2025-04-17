@@ -1,7 +1,5 @@
 module Camino.Sparse.Graph where
 
-import Prelude hiding (map)
-
 import Camino.Identify
 import Control.Monad.ST
 import Control.Monad.Trans.Reader
@@ -20,13 +18,10 @@ data Graph a = Graph
 
 type Vertex = Int
 
-instance Functor Graph where
-    fmap = map
-
 -- | Map the vertices in a graph, without affecting its overall structure.
 
-map :: (a -> b) -> Graph a -> Graph b
-map f Graph{edges, nodes} = Graph edges (fmap f nodes)
+instance Functor Graph where
+    fmap f Graph{edges, nodes} = Graph edges (fmap f nodes)
     
 -- | Construct a sparse graph from adjacency lists of numbered vertices.
 
