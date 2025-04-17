@@ -35,23 +35,22 @@ unsafeFromVertices adjs =
 
 -- | Construct a sparse graph from an adjacency map. Mainly intended for internal use.
 
-sparseGraphFromMap :: forall a. Ord a => Map a [a] -> Graph a
-sparseGraphFromMap adjacencyMap =
+fromMap :: forall a. Ord a => Map a [a] -> Graph a
+fromMap adjacencyMap =
     let
-        edges' = arrayFromList edges
-        nodes' = arrayFromList nodes
+        (nodes, edges) = unzip $ Map.elems $ identifyBfs go $ Map.keys adjacencyMap
     in
-        Graph edges' nodes'
+        Graph  
+            { edges = arrayFromList edges
+            , nodes = arrayFromList nodes
+            }
     where
-        (nodes, edges) =
-            unzip $ Map.elems
-                  $ identifyBfs (\x -> Map.findWithDefault [] x adjacencyMap)
-                  $ Map.keys adjacencyMap
+        go x = Map.findWithDefault [] x adjacencyMap
 
 -- | Construct a sparse graph from an adjacency list.
 
 fromAdjacencies :: forall a. Ord a => [(a, [a])] -> Graph a
-fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
+fromAdjacencies = fromMap . Map.fromListWith (<>)
 
 -- | Create a new graph with only the raw internal structure of the input graph.
 

@@ -2,8 +2,8 @@ module Camino.Map.Graph where
 
 import Camino.Sparse.Graph
     ( Graph
-    , sparseGraphFromMap
     )
+import Camino.Sparse.Graph qualified as Sparse
 import Camino.Strategies
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
@@ -26,7 +26,7 @@ fromAdjacencies = AdjacencyMap . Map.fromListWith (<>)
 -- | Construct a sparse graph from an adjacency map.
 
 sparseGraph :: Ord a => AdjacencyMap a -> Graph a
-sparseGraph (AdjacencyMap adjacencyMap) = sparseGraphFromMap adjacencyMap
+sparseGraph (AdjacencyMap adjacencyMap) = Sparse.fromMap adjacencyMap
 
 -- | Unfold an adjacency map from some initial values and a successor function.
 
