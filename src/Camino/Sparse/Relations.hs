@@ -13,7 +13,7 @@ import Data.Set qualified as Set
 --   counterpart in the input graph.
 
 opposite :: Graph a -> Graph a
-opposite = traverseStructure go
+opposite = rebuildStructure $ GraphRebuild go
     where
         go v ws = traverse_ (invert v) ws
 
@@ -26,7 +26,7 @@ opposite = traverseStructure go
 -- | Compute the /reflexive closure/ of a graph.
 
 reflexive :: Graph a -> Graph a
-reflexive = traverseStructure go
+reflexive = rebuildStructure $ GraphRebuild go
     where
         go :: Vertex -> [Vertex] -> ReaderT (MutableArray s [Vertex]) (ST s) ()
         go v ws = do

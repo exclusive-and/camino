@@ -27,30 +27,6 @@ instance Functor Graph where
 
 map :: (a -> b) -> Graph a -> Graph b
 map f Graph{edges, nodes} = Graph edges (fmap f nodes)
-
--- | Create a new graph with only the raw internal structure of the input graph.
-
-structure :: Graph a -> Graph Vertex
-structure Graph{edges} = Graph edges (arrayFromList [0..length edges - 1])
-
--- | Modify the internal structure of a graph. Doesn't touch nodes at all.
-
-traverseStructure ::
-       (forall s. Vertex -> [Vertex] -> ReaderT (MutableArray s [Vertex]) (ST s) ())
-    -> Graph a
-    -> Graph a
-
-traverseStructure f input =
-    let
-        Graph{edges, nodes} = structure input
-
-        go = runArray $ do
-            edges' <- newArray (length edges) []
-            let g v = f v (edges `indexArray` v)
-            traverse_ g nodes `runReaderT` edges'
-            pure edges'
-    in
-        Graph go input.nodes
     
 -- | Construct a sparse graph from adjacency lists of numbered vertices.
 
@@ -81,3 +57,30 @@ sparseGraphFromMap adjacencyMap =
 
 fromAdjacencies :: forall a. Ord a => [(a, [a])] -> Graph a
 fromAdjacencies = sparseGraphFromMap . Map.fromListWith (<>)
+
+-- | Create a new graph with only the raw internal structure of the input graph.
+
+structure :: Graph a -> Graph Vertex
+structure Graph{edges} = Graph edges (arrayFromList [0..length edges - 1])
+
+-- | A function that rebuilds the internal structure of a graph.
+
+newtype GraphRebuild = GraphRebuild
+    { runRebuild :: forall s.
+        Vertex -> [Vertex] -> ReaderT (MutableArray s [Vertex]) (ST s) ()
+    }
+
+-- | Modify the internal structure of a graph. Doesn't touch nodes at all.
+
+rebuildStructure :: GraphRebuild -> Graph a -> Graph a
+rebuildStructure f input =
+    let
+        Graph{edges, nodes} = structure input
+
+        go = runArray $ do
+            edges' <- newArray (length edges) []
+            let g v = runRebuild f v (edges `indexArray` v)
+            traverse_ g nodes `runReaderT` edges'
+            pure edges'
+    in
+        Graph go input.nodes
