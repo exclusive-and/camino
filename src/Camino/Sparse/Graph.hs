@@ -25,13 +25,13 @@ instance Functor Graph where
     
 -- | Construct a sparse graph from adjacency lists of numbered vertices.
 
-unsafeFromVertices :: [[Vertex]] -> Graph Vertex
-unsafeFromVertices adjs =
+unsafeMakeGraph :: [[Vertex]] -> Graph Vertex
+unsafeMakeGraph adjs =
     let
         edges = arrayFromList adjs
         nodes = arrayFromList [0..length edges - 1]
     in
-        Graph edges nodes
+        Graph {edges, nodes}
 
 -- | Construct a sparse graph from an adjacency map. Mainly intended for internal use.
 
