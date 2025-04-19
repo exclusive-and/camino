@@ -30,69 +30,71 @@ instance Functor SCC where
 -- depends on the hidden structure of the input graph.
 
 contractMap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
-contractMap f Graph{edges, nodes} =
-    let
-        size = length edges
-
-        (sccs, _stack, _depth) = runST $ do
-            ns <- newArray size (-1)
-            ys <- newArray size mempty
-            sccfold ([], [], 0) [0..size - 1] `runReaderT` (ns, ys)
-    in
-        sccs
+contractMap f Graph{edges, nodes} = contracted
     where
-        sccfold = foldrM (whenInteresting go)
+        (contracted, _stack, _depth) = runST $ do
+            let size = length edges
+            -- 1. Set up mutable arrays for preorders and partials.
+            preorders <- newArray size (-1)
+            partials <- newArray size mempty
+            -- 2. Run a depth-first traversal and contraction on all vertices in the input.
+            let initial = ([], [], 0)
+                vertices = [0..size - 1]
+            contractDfs initial vertices `runReaderT` (preorders, partials)
+
+        contractDfs = foldrM (whenInteresting contractAt)
 
         whenInteresting f v s = do
-            (ns, _) <- ask
-            n <- ns `readArray` v
+            (preorders, _) <- ask
+            n <- preorders `readArray` v
             if n < 0 then f v s else pure s
         
-        go  :: Vertex
-            -> ([SCC b], [Vertex], Int)
-            -> ReaderT  (MutableArray s Int, MutableArray s b)
-                        (ST s)
-                        ([SCC b], [Vertex], Int)
+        contractAt  :: Vertex
+                    -> ([SCC b], [Vertex], Int)
+                    -> ReaderT  (MutableArray s Int, MutableArray s b)
+                                (ST s)
+                                ([SCC b], [Vertex], Int)
         
         -- This implementation was derived from the outline of the @Digraph@ algorithm given
         -- in https://doi.org/10.1145/69622.357187.
         --
         -- Both my implementation and the one in the paper are variants of Tarjan's algorithm.
 
-        go v (sccs, stack, depth) = do
-            (ns, ys) <- ask
+        contractAt v (sccs, stack, depth) = do
+            (preorders, partials) <- ask
             -- 1. Compute initial preorder number.
-            writeArray ns v depth
+            writeArray preorders v depth
             -- 2. Recurse on adjacent vertices.
             let ws = edges `indexArray` v
-            (sccs', stack', depth') <- sccfold (sccs, v:stack, depth + 1) ws
-            -- 3. Compute new preorder.
-            ns' <- traverse (readArray ns) ws
-            let n' = foldr min depth ns'
-            writeArray ns v n'
-            -- 4. Compute immediate and combined results.
+            output <- contractDfs (sccs, v:stack, depth + 1) ws
+            -- 3. Compute immediate and combined results.
             --    See Note [Recurse before calculating the immediate result].
             let y = f (nodes `indexArray` v)
-            ys' <- traverse (readArray ys) ws
-            let y' = mconcat (y:ys')
-            writeArray ys v y'
+            partials' <- traverse (readArray partials) ws
+            let y' = mconcat (y:partials')
+            writeArray partials v y'
+            -- 4. Compute new preorder.
+            preorders' <- traverse (readArray preorders) ws
+            let n' = foldr min depth preorders'
+            writeArray preorders v n'
             -- 5. Create a new SCC if one is detected.
-            if n' == depth
-                then popScc [] v (sccs', stack', depth')
-                else pure (sccs', stack', depth')
+            if n' == depth then pop v output else pure output
+
+        pop v output = pop' [] v output
+
+        pop' scc v (sccs, [], _depth) = pure (sccs, [], 0)
         
-        popScc scc v (sccs, []     , _depth) = pure (sccs, [], 0)
-        popScc scc v (sccs, x:stack,  depth) = do
-            (ns, ys) <- ask
-            writeArray ns x maxBound
+        pop' scc v (sccs, x:stack, depth) = do
+            (preorders, partials) <- ask
+            writeArray preorders x maxBound
             let depth' = depth - 1
             if v == x then do
-                y <- ys `readArray` x
+                y <- partials `readArray` x
                 -- Need to make sure that every vertex in the SCC gets the same final result!
-                forM_ scc $ \v -> writeArray ys v y
+                forM_ scc $ \v -> writeArray partials v y
                 pure (createScc scc x y : sccs, stack, depth')
             else
-                popScc (x:scc) v (sccs, stack, depth')
+                pop' (x:scc) v (sccs, stack, depth')
         
         createScc []  x y | x `notElem` (edges `indexArray` x) = Trivial y x
         createScc scc x y = Cycle y (x :| scc)
