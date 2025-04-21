@@ -32,6 +32,8 @@ instance Functor SCC where
 contractMap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
 contractMap f Graph{edges, nodes} = contracted
     where
+        -- See Note [contractMap attribution].
+
         (contracted, _stack, _depth) = runST $ do
             let size = length edges
             -- 1. Set up mutable arrays for preorders and partials.
@@ -54,11 +56,6 @@ contractMap f Graph{edges, nodes} = contracted
                     -> ReaderT  (MutableArray s Int, MutableArray s b)
                                 (ST s)
                                 ([SCC b], [Vertex], Int)
-        
-        -- This implementation was derived from the outline of the @Digraph@ algorithm given
-        -- in https://doi.org/10.1145/69622.357187.
-        --
-        -- Both my implementation and the one in the paper are variants of Tarjan's algorithm.
 
         contractAt v (sccs, stack, depth) = do
             (preorders, partials) <- ask
@@ -100,6 +97,15 @@ contractMap f Graph{edges, nodes} = contracted
         createScc scc x y = Cycle y (x :| scc)
 
 {-
+Note [contractMap attribution]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'contractMap' is a variation of Tarjan's SCC-finding algorithm. Its implementation was derived
+from the outline of the @Digraph@ algorithm written by DeRemer and Pennello in:
+
+    DeRemer, F., and Pennello, T. "Efficient Computation of LALR(1) Look-Ahead Sets".
+        ACM Transactions on Programming Languages and Systems, Vol 4, No 4 (1982), pp 615-649.
+        https://doi.org/10.1145/69622.357187 (accessed on 2025-04-21).
+
 Note [Recurse before calculating the immediate result]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Contrary to the algorithm in the paper, my 'contractMap' implementation recurses /before/
