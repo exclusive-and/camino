@@ -1,11 +1,10 @@
 -- | Some algorithms for reaching analysis of graphs, centered around 'contractMap'.
 
-module Camino.Reaching where
+module Camino.Sparse.Reaching where
 
-import Camino.Graph.Sparse
+import Camino.Sparse.Graph
 import Control.Monad.ST
 import Control.Monad.Trans.Reader
-import Data.Bifunctor
 import Data.Foldable
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
@@ -193,26 +192,3 @@ condensation input@Graph{edges} =
             let ws  = concatMap (indexArray edges) vs
                 ws' = filter (/= n) $ indexArray labels <$> ws
             writeArray edges' n ws'
-
--- | Compute the /transitive closure/ of a graph.
-
-transitive :: Graph a -> Graph a
-transitive input@Graph{nodes} =
-    let
-        sccs = reachingSets (structure input)
-    in
-        Graph (go sccs) nodes
-    where
-        go sccs = runArray $ do
-            edges' <- newArray (length nodes) []
-            traverse_ propagate sccs `runReaderT` edges'
-            pure edges'
-
-        propagate (Trivial rs v ) = do
-            edges' <- ask
-            writeArray edges' v $ Set.toList rs
-
-        propagate (Cycle rs vs) = do
-            edges' <- ask
-            let rs' = Set.toList rs
-            traverse_ (\v -> writeArray edges' v rs') vs

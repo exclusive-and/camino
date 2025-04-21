@@ -2,7 +2,7 @@ cabal-version: 3.4
 
 name: camino
 homepage: https://git.computeroid.org/xand/camino
-version: 0.4.0.1
+version: 0.5.0.0
 synopsis: Algorithms for graph-like data
 description:
     Camino is a curated repository of algorithms (and some data structures) that I've implemented
@@ -23,10 +23,11 @@ library
     hs-source-dirs: src
 
     exposed-modules:
-        Camino.AdjacencyMap
-        Camino.Graph.Sparse
+        Camino.Map.Graph
         Camino.Identify
-        Camino.Reaching
+        Camino.Sparse.Graph
+        Camino.Sparse.Reaching
+        Camino.Sparse.Relations
         Camino.Strategies
 
     build-depends:
