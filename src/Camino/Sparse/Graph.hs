@@ -3,9 +3,12 @@ module Camino.Sparse.Graph where
 import Camino.Identify
 import Control.Monad.ST
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Writer
 import Data.Foldable
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Primitive.Array
 
 -- | Sparse directed graphs.
@@ -46,6 +49,39 @@ fromMap adjacencyMap =
             }
     where
         go x = Map.findWithDefault [] x adjacencyMap
+
+-- | A problem raised by 'fromMapExact' when it encounters a vertex with no corresponding key.
+
+newtype CantFindKeyForVertex a = CantFindKeyForVertex a
+    deriving (Eq, Ord, Show)
+
+-- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
+
+fromMapExact :: forall a. Ord a => Map a [a] -> Either [CantFindKeyForVertex a] (Graph a)
+fromMapExact input = case problems of
+    [] -> Right graph
+    _  -> Left problems
+    where
+        graph = runST $ do
+            nodes <- newArray (length converted) undefined
+            edges <- newArray (length converted) []
+            let f k (v, ws) = do
+                    writeArray nodes v k
+                    writeArray edges v ws
+            _ <- Map.traverseWithKey f converted
+            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+
+        (converted, problems) = runWriter $ traverse convertEdges enumerated
+
+        convertEdges (n, ys) = fmap (n,) $ fmap catMaybes $ traverse convertEdge ys
+
+        convertEdge y = case Map.lookup y enumerated of
+            Nothing     -> tell [CantFindKeyForVertex y] >> pure Nothing
+            Just (w, _) -> pure $ Just w
+
+        enumerated = traverse enumerate input `evalState` 0
+
+        enumerate x = get >>= \n -> put (n + 1) >> pure (n, x)
 
 -- | Construct a sparse graph from an adjacency list.
 
