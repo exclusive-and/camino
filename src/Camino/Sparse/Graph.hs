@@ -11,6 +11,8 @@ import Data.Map qualified as Map
 import Data.Map.Extra qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Primitive.Array
+import Data.Set (Set)
+import Data.Set qualified as Set
 
 -- | Sparse directed graphs.
 
@@ -53,37 +55,40 @@ fromMap adjacencyMap =
 
 -- | A problem raised by 'fromMapExact' when it encounters a vertex with no corresponding key.
 
-newtype CantFindKeyForVertex a = CantFindKeyForVertex a
+data CantMakeEdge a = CantMakeEdge
+    { from  :: a
+    , to    :: a
+    }
     deriving (Eq, Ord, Show)
+
+type CantMakeEdges a = Set (CantMakeEdge a)
 
 -- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
 
-fromMapExact :: forall a. Ord a => Map a [a] -> Either [CantFindKeyForVertex a] (Graph a)
+fromMapExact :: Ord a => Map a [a] -> Either (CantMakeEdges a) (Graph a)
 fromMapExact input =
     let
-        (converted, problems) = runWriter $ traverse convertEdges enumerated
+        (converted, problems) = runWriter $ Map.traverseWithKey convertEdges enumerated
     in
-        case problems of
-            [] -> Right $ runST $ do
-                edges <- newArray (length converted) (error "fromMapExact: impossible edges")
-                nodes <- newArray (length converted) (error "fromMapExact: impossible nodes")
-                build edges nodes converted
-
-            _  -> Left problems
+        if Set.null problems then Right $ runST $ do
+            edges <- newArray (length converted) (error "fromMapExact: impossible edges")
+            nodes <- newArray (length converted) (error "fromMapExact: impossible nodes")
+            build edges nodes converted
+            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+        else
+            Left problems
     where
         enumerated = Map.enumerate input
         
-        convertEdges (n, ys) = do
-            edges <- traverse convertEdge ys
+        convertEdges x (n, ys) = do
+            edges <- traverse (convertEdge x) ys
             pure (n, catMaybes edges)
 
-        convertEdge y = case Map.lookup y enumerated of
-            Nothing     -> tell [CantFindKeyForVertex y] >> pure Nothing
+        convertEdge x y = case Map.lookup y enumerated of
+            Nothing     -> tell (Set.singleton $ CantMakeEdge x y) >> pure Nothing
             Just (w, _) -> pure $ Just w
 
-        build edges nodes converted = do
-            _ <- Map.traverseWithKey f converted
-            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+        build edges nodes converted = Map.traverseWithKey f converted *> pure ()
             where
                 f k (v, ws) = do
                     writeArray nodes v k
