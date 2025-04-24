@@ -6,6 +6,7 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
 import Data.Foldable
+import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Map.Extra qualified as Map
@@ -88,7 +89,7 @@ fromMapExact input =
             Nothing     -> tell (Set.singleton $ CantMakeEdge x y) >> pure Nothing
             Just (w, _) -> pure $ Just w
 
-        build edges nodes converted = Map.traverseWithKey f converted *> pure ()
+        build edges nodes = void . Map.traverseWithKey f
             where
                 f k (v, ws) = do
                     writeArray nodes v k
