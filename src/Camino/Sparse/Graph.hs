@@ -3,10 +3,17 @@ module Camino.Sparse.Graph where
 import Camino.Identify
 import Control.Monad.ST
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Writer
 import Data.Foldable
+import Data.Functor (void)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Map.Extra qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Primitive.Array
+import Data.Set (Set)
+import Data.Set qualified as Set
 
 -- | Sparse directed graphs.
 
@@ -46,6 +53,47 @@ fromMap adjacencyMap =
             }
     where
         go x = Map.findWithDefault [] x adjacencyMap
+
+-- | A problem raised by 'fromMapExact' when it encounters a vertex with no corresponding key.
+
+data CantMakeEdge a = CantMakeEdge
+    { from  :: a
+    , to    :: a
+    }
+    deriving (Eq, Ord, Show)
+
+type CantMakeEdges a = Set (CantMakeEdge a)
+
+-- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
+
+fromMapExact :: Ord a => Map a [a] -> Either (CantMakeEdges a) (Graph a)
+fromMapExact input =
+    let
+        (converted, problems) = runWriter $ Map.traverseWithKey convertEdges enumerated
+    in
+        if Set.null problems then Right $ runST $ do
+            edges <- newArray (length converted) (error "fromMapExact: impossible edges")
+            nodes <- newArray (length converted) (error "fromMapExact: impossible nodes")
+            build edges nodes converted
+            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+        else
+            Left problems
+    where
+        enumerated = Map.enumerate input
+        
+        convertEdges x (n, ys) = do
+            edges <- traverse (convertEdge x) ys
+            pure (n, catMaybes edges)
+
+        convertEdge x y = case Map.lookup y enumerated of
+            Nothing     -> tell (Set.singleton $ CantMakeEdge x y) >> pure Nothing
+            Just (w, _) -> pure $ Just w
+
+        build edges nodes = void . Map.traverseWithKey f
+            where
+                f k (v, ws) = do
+                    writeArray nodes v k
+                    writeArray edges v ws
 
 -- | Construct a sparse graph from an adjacency list.
 
