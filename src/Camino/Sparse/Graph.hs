@@ -8,6 +8,7 @@ import Control.Monad.Trans.Writer
 import Data.Foldable
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Map.Extra qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Primitive.Array
 
@@ -58,30 +59,36 @@ newtype CantFindKeyForVertex a = CantFindKeyForVertex a
 -- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
 
 fromMapExact :: forall a. Ord a => Map a [a] -> Either [CantFindKeyForVertex a] (Graph a)
-fromMapExact input = case problems of
-    [] -> Right graph
-    _  -> Left problems
-    where
-        graph = runST $ do
-            nodes <- newArray (length converted) undefined
-            edges <- newArray (length converted) []
-            let f k (v, ws) = do
-                    writeArray nodes v k
-                    writeArray edges v ws
-            _ <- Map.traverseWithKey f converted
-            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
-
+fromMapExact input =
+    let
         (converted, problems) = runWriter $ traverse convertEdges enumerated
+    in
+        case problems of
+            [] -> Right $ runST $ do
+                edges <- newArray (length converted) (error "fromMapExact: impossible edges")
+                nodes <- newArray (length converted) (error "fromMapExact: impossible nodes")
+                build edges nodes converted
 
-        convertEdges (n, ys) = fmap (n,) $ fmap catMaybes $ traverse convertEdge ys
+            _  -> Left problems
+    where
+        enumerated = Map.enumerate input
+        
+        convertEdges (n, ys) = do
+            edges <- traverse convertEdge ys
+            pure (n, catMaybes edges)
 
         convertEdge y = case Map.lookup y enumerated of
             Nothing     -> tell [CantFindKeyForVertex y] >> pure Nothing
             Just (w, _) -> pure $ Just w
 
-        enumerated = traverse enumerate input `evalState` 0
+        build edges nodes converted = do
+            _ <- Map.traverseWithKey f converted
+            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+            where
+                f k (v, ws) = do
+                    writeArray nodes v k
+                    writeArray edges v ws
 
-        enumerate x = get >>= \n -> put (n + 1) >> pure (n, x)
 
 -- | Construct a sparse graph from an adjacency list.
 
