@@ -89,7 +89,6 @@ fromMapExact input =
                     writeArray nodes v k
                     writeArray edges v ws
 
-
 -- | Construct a sparse graph from an adjacency list.
 
 fromAdjacencies :: forall a. Ord a => [(a, [a])] -> Graph a
