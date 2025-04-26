@@ -30,71 +30,70 @@ instance Functor SCC where
 -- depends on the hidden structure of the input graph.
 
 contractMap :: forall b a. Monoid b => (a -> b) -> Graph a -> [SCC b]
-contractMap f Graph{edges, nodes} = contracted
-    where
-        -- See Note [contractMap attribution].
+contractMap f Graph{edges, nodes} = contracted where
+    -- See Note [contractMap attribution].
 
-        (contracted, _stack, _depth) = runST $ do
-            let size = length edges
-            -- 1. Set up mutable arrays for preorders and partials.
-            preorders <- newArray size (-1)
-            partials <- newArray size mempty
-            -- 2. Run a depth-first traversal and contraction on all vertices in the input.
-            let initial = ([], [], 0)
-                vertices = [0..size - 1]
-            contractDfs initial vertices `runReaderT` (preorders, partials)
+    (contracted, _stack, _depth) = runST $ do
+        let size = length edges
+        -- 1. Set up mutable arrays for preorders and partials.
+        preorders <- newArray size (-1)
+        partials <- newArray size mempty
+        -- 2. Run a depth-first traversal and contraction on all vertices in the input.
+        let initial = ([], [], 0)
+            vertices = [0..size - 1]
+        contractDfs initial vertices `runReaderT` (preorders, partials)
 
-        contractDfs = foldrM (whenInteresting contractAt)
+    contractDfs = foldrM (whenInteresting contractAt)
 
-        whenInteresting f v s = do
-            (preorders, _) <- ask
-            n <- preorders `readArray` v
-            if n < 0 then f v s else pure s
+    whenInteresting f v s = do
+        (preorders, _) <- ask
+        n <- preorders `readArray` v
+        if n < 0 then f v s else pure s
         
-        contractAt  :: Vertex
-                    -> ([SCC b], [Vertex], Int)
-                    -> ReaderT  (MutableArray s Int, MutableArray s b)
-                                (ST s)
-                                ([SCC b], [Vertex], Int)
+    contractAt  :: Vertex
+                -> ([SCC b], [Vertex], Int)
+                -> ReaderT  (MutableArray s Int, MutableArray s b)
+                            (ST s)
+                            ([SCC b], [Vertex], Int)
 
-        contractAt v (sccs, stack, depth) = do
-            (preorders, partials) <- ask
-            -- 1. Compute initial preorder number.
-            writeArray preorders v depth
-            -- 2. Recurse on adjacent vertices.
-            let ws = edges `indexArray` v
-            output <- contractDfs (sccs, v:stack, depth + 1) ws
-            -- 3. Compute immediate and combined results.
-            --    See Note [Recurse before calculating the immediate result].
-            let y = f (nodes `indexArray` v)
-            partials' <- traverse (readArray partials) ws
-            let y' = mconcat (y:partials')
-            writeArray partials v y'
-            -- 4. Compute new preorder.
-            preorders' <- traverse (readArray preorders) ws
-            let n' = foldr min depth preorders'
-            writeArray preorders v n'
-            -- 5. Create a new SCC if one is detected.
-            if n' == depth then pop v output else pure output
+    contractAt v (sccs, stack, depth) = do
+        (preorders, partials) <- ask
+        -- 1. Compute initial preorder number.
+        writeArray preorders v depth
+        -- 2. Recurse on adjacent vertices.
+        let ws = edges `indexArray` v
+        output <- contractDfs (sccs, v:stack, depth + 1) ws
+        -- 3. Compute immediate and combined results.
+        --    See Note [Recurse before calculating the immediate result].
+        let y = f (nodes `indexArray` v)
+        partials' <- traverse (readArray partials) ws
+        let y' = mconcat (y:partials')
+        writeArray partials v y'
+        -- 4. Compute new preorder.
+        preorders' <- traverse (readArray preorders) ws
+        let n' = foldr min depth preorders'
+        writeArray preorders v n'
+        -- 5. Create a new SCC if one is detected.
+        if n' == depth then pop v output else pure output
 
-        pop v output = pop' [] v output
+    pop v output = pop' [] v output
 
-        pop' scc v (sccs, [], _depth) = pure (sccs, [], 0)
+    pop' scc v (sccs, [], _depth) = pure (sccs, [], 0)
         
-        pop' scc v (sccs, x:stack, depth) = do
-            (preorders, partials) <- ask
-            writeArray preorders x maxBound
-            let depth' = depth - 1
-            if v == x then do
-                y <- partials `readArray` x
-                -- Need to make sure that every vertex in the SCC gets the same final result!
-                forM_ scc $ \v -> writeArray partials v y
-                pure (createScc scc x y : sccs, stack, depth')
-            else
-                pop' (x:scc) v (sccs, stack, depth')
-        
-        createScc []  x y | x `notElem` (edges `indexArray` x) = Trivial y x
-        createScc scc x y = Cycle y (x :| scc)
+    pop' scc v (sccs, x:stack, depth) = do
+        (preorders, partials) <- ask
+        writeArray preorders x maxBound
+        let depth' = depth - 1
+        if v == x then do
+            y <- partials `readArray` x
+            -- Need to make sure that every vertex in the SCC gets the same final result!
+            forM_ scc $ \v -> writeArray partials v y
+            pure (createScc scc x y : sccs, stack, depth')
+        else
+            pop' (x:scc) v (sccs, stack, depth')
+       
+    createScc []  x y | x `notElem` (edges `indexArray` x) = Trivial y x
+    createScc scc x y = Cycle y (x :| scc)
 
 {-
 Note [contractMap attribution]
