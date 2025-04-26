@@ -25,7 +25,6 @@ library
 
     exposed-modules:
         Camino.Identify
-        Camino.Map.Graph
         Camino.Sparse.Graph
         Camino.Sparse.Reaching
         Camino.Sparse.Relations
