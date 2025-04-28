@@ -42,7 +42,9 @@ library
         transformers
 
     default-extensions:
+        DeriveTraversable
         DuplicateRecordFields
+        GeneralizedNewtypeDeriving
         ImportQualifiedPost
         NamedFieldPuns
         OverloadedRecordDot
