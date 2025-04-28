@@ -75,8 +75,8 @@ fromMapExact input =
     in
         if Set.null problems then
             pure $ Graph
-                { edges = convert indexMap <$> arr
-                , nodes = Map.keyArrayQuick indexMap
+                { edges = map (indexMap Map.!) <$> arr
+                , nodes = Map.unsafeFastKeyArray indexMap
                 }
         else
             throwE problems
@@ -87,8 +87,6 @@ fromMapExact input =
                     pure ()
                 else
                     tell (Set.singleton $ CantMakeEdge x y)
-
-        convert im = map (\y -> Map.findWithDefault (error "impossible") y im)
 
 -- | Construct a sparse graph from an adjacency list.
 
