@@ -2,6 +2,7 @@ module Camino.Sparse.Graph where
 
 import Camino.Identify
 import Control.Monad.ST
+import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
@@ -66,34 +67,28 @@ type CantMakeEdges a = Set (CantMakeEdge a)
 
 -- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
 
-fromMapExact :: Ord a => Map a [a] -> Either (CantMakeEdges a) (Graph a)
+fromMapExact :: Ord a => Map a [a] -> Except (CantMakeEdges a) (Graph a)
 fromMapExact input =
     let
-        (converted, problems) = runWriter $ Map.traverseWithKey convertEdges enumerated
+        (checked, problems) = runWriter $ Map.traverseWithKey check input
+        (indexMap, arr) = Map.indirect checked
     in
-        if Set.null problems then Right $ runST $ do
-            edges <- newArray (length converted) (error "fromMapExact: impossible edges")
-            nodes <- newArray (length converted) (error "fromMapExact: impossible nodes")
-            build edges nodes converted
-            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+        if Set.null problems then
+            pure $ Graph
+                { edges = convert indexMap <$> arr
+                , nodes = Map.keyArrayQuick indexMap
+                }
         else
-            Left problems
+            throwE problems
     where
-        enumerated = Map.enumerate input
-        
-        convertEdges x (n, ys) = do
-            edges <- traverse (convertEdge x) ys
-            pure (n, catMaybes edges)
+        check x = traverse go where
+            go y = pure y <*
+                if y `Map.member` input then
+                    pure ()
+                else
+                    tell (Set.singleton $ CantMakeEdge x y)
 
-        convertEdge x y = case Map.lookup y enumerated of
-            Nothing     -> tell (Set.singleton $ CantMakeEdge x y) >> pure Nothing
-            Just (w, _) -> pure $ Just w
-
-        build edges nodes = void . Map.traverseWithKey f
-            where
-                f k (v, ws) = do
-                    writeArray nodes v k
-                    writeArray edges v ws
+        convert im = map (\y -> Map.findWithDefault (error "impossible") y im)
 
 -- | Construct a sparse graph from an adjacency list.
 
