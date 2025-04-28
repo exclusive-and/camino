@@ -30,6 +30,17 @@ withJustMap m cont = cont (JustMap m)
 member :: Ord k => k -> JustMap ph k v -> Maybe (Key ph k)
 member k (JustMap m) = const (Key k) <$> Map.lookup k m
 
+-- | Traverse a 'JustMap' with its 'Key's visible to the traversing function.
+
+traverseWithKey :: Applicative f
+                => (Key ph k -> a -> f b)
+                -> JustMap ph k a
+                -> f (JustMap ph k b)
+
+traverseWithKey f (JustMap m) = JustMap <$> Map.traverseWithKey g m
+    where
+        g k = f (Key k)
+        
 -- | Look up a 'Key' in a 'JustMap'. The phantom type parameter proves that the key must be in
 --   the map.
 
