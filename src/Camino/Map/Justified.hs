@@ -3,6 +3,7 @@
 module Camino.Map.Justified
     ( JustMap
     , Key
+    , forgetKey
     , withJustMap
     , member
     , lookup
@@ -24,6 +25,11 @@ newtype Key ph k = Key
     { getKey :: k
     }
     deriving (Eq, Ord, Show)
+
+-- | Get a bare key, forgetting its memberships.
+
+forgetKey :: Key ph k -> k
+forgetKey = getKey
 
 -- | A 'Map' variant that knows which keys have already been found inside it.
 
