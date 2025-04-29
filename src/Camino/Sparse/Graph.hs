@@ -1,11 +1,18 @@
 module Camino.Sparse.Graph where
 
 import Camino.Identify
+import Camino.Map.JustGraph
+    ( JustGraphProblem (..)
+    , withJustGraph
+    )
+import Camino.Map.Justified (JustMap, Key)
+import Camino.Map.Justified qualified as JustMap
 import Control.Monad.ST
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
+import Data.Bifunctor (second)
 import Data.Foldable
 import Data.Functor (void)
 import Data.Map (Map)
@@ -55,38 +62,27 @@ fromMap adjacencyMap =
     where
         go x = Map.findWithDefault [] x adjacencyMap
 
--- | A problem raised by 'fromMapExact' when it encounters a vertex with no corresponding key.
-
-data CantMakeEdge a = CantMakeEdge
-    { from  :: a
-    , to    :: a
-    }
-    deriving (Eq, Ord, Show)
-
-type CantMakeEdges a = Set (CantMakeEdge a)
-
 -- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
 
-fromMapExact :: Ord a => Map a [a] -> Except (CantMakeEdges a) (Graph a)
-fromMapExact input =
+fromMapExact :: Ord a => Map a [a] -> Except (JustGraphProblem a) (Graph a)
+fromMapExact input = withJustGraph input $ \jg ->
     let
-        (checked, problems) = runWriter $ Map.traverseWithKey check input
-        (indexMap, arr) = Map.indirect checked
+        enumerated = traverse enum jg `evalState` 0
+        edgesMap = second (map (\ky -> fst $ JustMap.lookup ky enumerated)) <$> enumerated
     in
-        if Set.null problems then
-            pure $ Graph
-                { edges = map (indexMap Map.!) <$> arr
-                , nodes = Map.unsafeFastKeyArray indexMap
-                }
-        else
-            throwE problems
+        runST $ do
+            edges <- newArray (length enumerated) (error "impossible")
+            nodes <- newArray (length enumerated) (error "impossible")
+            build edges nodes edgesMap
+            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
     where
-        check x = traverse go where
-            go y = pure y <*
-                if y `Map.member` input then
-                    pure ()
-                else
-                    tell (Set.singleton $ CantMakeEdge x y)
+        enum x = get >>= \n -> put (n + 1) *> pure (n, x)
+
+        build edges nodes = void . JustMap.traverseWithKey go
+            where
+                go kx (n, ws) = do
+                    writeArray edges n ws
+                    writeArray nodes n (JustMap.forgetKey kx)
 
 -- | Construct a sparse graph from an adjacency list.
 
