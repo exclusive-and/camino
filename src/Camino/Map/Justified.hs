@@ -4,6 +4,7 @@ module Camino.Map.Justified
     ( JustMap
     , Key
     , withJustMap
+    , mapWithKey
     , traverseWithKey
     , member
     , lookup
@@ -34,6 +35,13 @@ newtype JustMap ph k v = JustMap
 
 withJustMap :: Map k v -> (forall ph. JustMap ph k v -> r) -> r
 withJustMap m cont = cont (JustMap m)
+
+-- | Map a function over the keys and values in a 'JustMap'.
+
+mapWithKey :: (Key ph k -> a -> b) -> JustMap ph k a -> JustMap ph k b
+mapWithKey f (JustMap m) = JustMap (Map.mapWithKey g m)
+    where
+        g k = f (Key k)
 
 -- | Traverse a 'JustMap' with its 'Key's visible to the traversing function.
 
