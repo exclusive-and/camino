@@ -10,6 +10,8 @@ module Camino.Map.Justified
     , traverseWithKey
     ) where
 
+-- See Note [Camino.Map.Justified attribution]
+
 import Prelude hiding (lookup)
 
 import Data.Map (Map)
@@ -66,3 +68,12 @@ traverseWithKey :: Applicative f
 traverseWithKey f (JustMap m) = JustMap <$> Map.traverseWithKey g m
     where
         g k = f (Key k)
+
+{-
+Note [Camino.Map.Justified attribution]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+I owe the inspiration for this module to Matt Noonan's justified-containers package:
+
+    Noonan, M. "justified-containers".
+        https://hackage.haskell.org/package/justified-containers (accessed on 2025-04-29).
+-}
