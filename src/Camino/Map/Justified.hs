@@ -1,34 +1,39 @@
--- | A 'Map' variant with compile-time key membership information.
+-- | Existential quantification for your map keys, via a phantom type variable.
 
-module Camino.Map.Justified where
+module Camino.Map.Justified
+    ( JustMap
+    , Key
+    , withJustMap
+    , traverseWithKey
+    , member
+    , lookup
+    ) where
+
+import Prelude hiding (lookup)
 
 import Data.Map (Map)
 import Data.Map qualified as Map
 
--- | A key that's proven to exist in a corresponding 'JustMap'.
+-- | A key that knows it can be found in some 'JustMap's. The key's knowledge is conveyed via
+--   the phantom type @ph@.
 
 newtype Key ph k = Key
     { getKey :: k
     }
     deriving (Eq, Ord, Show)
 
--- | A 'Map' variant with a phantom type parameter that encodes key membership information at
---   compile-time.
+-- | A 'Map' variant that knows which keys have already been found inside it.
 
 newtype JustMap ph k v = JustMap
     { getMap :: Map k v
     }
     deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
--- | Execute a continuation on an existentially-quantified 'JustMap'.
+-- | Execute a continuation on the input map. Within the continuation, @ph@ carries information
+--   about which keys are known to exist in the input map.
 
 withJustMap :: Map k v -> (forall ph. JustMap ph k v -> r) -> r
 withJustMap m cont = cont (JustMap m)
-
--- | Try to prove that a key exists in the input 'JustMap'.
-
-member :: Ord k => k -> JustMap ph k v -> Maybe (Key ph k)
-member k (JustMap m) = const (Key k) <$> Map.lookup k m
 
 -- | Traverse a 'JustMap' with its 'Key's visible to the traversing function.
 
@@ -40,9 +45,14 @@ traverseWithKey :: Applicative f
 traverseWithKey f (JustMap m) = JustMap <$> Map.traverseWithKey g m
     where
         g k = f (Key k)
+
+-- | Try to prove that a key exists in the input 'JustMap'.
+
+member :: Ord k => k -> JustMap ph k v -> Maybe (Key ph k)
+member k (JustMap m) = const (Key k) <$> Map.lookup k m
         
--- | Look up a 'Key' in a 'JustMap'. The phantom type parameter proves that the key must be in
---   the map.
+-- | Look up a 'Key' in a 'JustMap'. @ph@ proves that we already know that the key is present
+--   in the map.
 
 lookup :: Ord k => Key ph k -> JustMap ph k v -> v
 lookup (Key k) (JustMap m) = case Map.lookup k m of
