@@ -4,10 +4,10 @@ module Camino.Map.Justified
     ( JustMap
     , Key
     , withJustMap
-    , mapWithKey
-    , traverseWithKey
     , member
     , lookup
+    , mapWithKey
+    , traverseWithKey
     ) where
 
 import Prelude hiding (lookup)
