@@ -36,25 +36,7 @@ newtype JustMap ph k v = JustMap
 withJustMap :: Map k v -> (forall ph. JustMap ph k v -> r) -> r
 withJustMap m cont = cont (JustMap m)
 
--- | Map a function over the keys and values in a 'JustMap'.
-
-mapWithKey :: (Key ph k -> a -> b) -> JustMap ph k a -> JustMap ph k b
-mapWithKey f (JustMap m) = JustMap (Map.mapWithKey g m)
-    where
-        g k = f (Key k)
-
--- | Traverse a 'JustMap' with its 'Key's visible to the traversing function.
-
-traverseWithKey :: Applicative f
-                => (Key ph k -> a -> f b)
-                -> JustMap ph k a
-                -> f (JustMap ph k b)
-
-traverseWithKey f (JustMap m) = JustMap <$> Map.traverseWithKey g m
-    where
-        g k = f (Key k)
-
--- | Try to prove that a key exists in the input 'JustMap'.
+-- | Try to prove that a key exists in a 'JustMap'.
 
 member :: Ord k => k -> JustMap ph k v -> Maybe (Key ph k)
 member k (JustMap m) = const (Key k) <$> Map.lookup k m
@@ -66,3 +48,21 @@ lookup :: Ord k => Key ph k -> JustMap ph k v -> v
 lookup (Key k) (JustMap m) = case Map.lookup k m of
     Just v  -> v
     Nothing -> error "impossible: Camino.Map.Justified has been subverted!"
+
+-- | Map a function over the keys and values in a 'JustMap'.
+
+mapWithKey :: (Key ph k -> a -> b) -> JustMap ph k a -> JustMap ph k b
+mapWithKey f (JustMap m) = JustMap (Map.mapWithKey g m)
+    where
+        g k = f (Key k)
+
+-- | Traverse over the keys and values in a 'JustMap'.
+
+traverseWithKey :: Applicative f
+                => (Key ph k -> a -> f b)
+                -> JustMap ph k a
+                -> f (JustMap ph k b)
+
+traverseWithKey f (JustMap m) = JustMap <$> Map.traverseWithKey g m
+    where
+        g k = f (Key k)
