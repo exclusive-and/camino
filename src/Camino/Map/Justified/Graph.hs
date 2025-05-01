@@ -1,4 +1,4 @@
-module Camino.Map.JustGraph where
+module Camino.Map.Justified.Graph where
 
 import Camino.Map.Justified (JustMap, Key)
 import Camino.Map.Justified qualified as JustMap
