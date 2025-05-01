@@ -57,12 +57,10 @@ lookup (Key k) (JustMap m) = case Map.lookup k m of
     Just v  -> v
     Nothing -> error "impossible: Camino.Map.Justified has been subverted!"
 
--- | Map a function over the keys and values in a 'JustMap'.
+-- | Map over the keys and values in a 'JustMap'.
 
 mapWithKey :: (Key ph k -> a -> b) -> JustMap ph k a -> JustMap ph k b
-mapWithKey f (JustMap m) = JustMap (Map.mapWithKey g m)
-    where
-        g k = f (Key k)
+mapWithKey f = coerceMap (Map.mapWithKey $ coerceKey f)
 
 -- | Traverse over the keys and values in a 'JustMap'.
 
@@ -71,9 +69,29 @@ traverseWithKey :: Applicative f
                 -> JustMap ph k a
                 -> f (JustMap ph k b)
 
-traverseWithKey f (JustMap m) = JustMap <$> Map.traverseWithKey g m
-    where
-        g k = f (Key k)
+traverseWithKey f = coerceFmap (Map.traverseWithKey $ coerceKey f)
+
+-- | Internal: coerce a function on 'Map's into one on 'JustMap's.
+
+coerceMap   :: (Map kx x -> Map ky y)
+            -> JustMap ph kx x
+            -> JustMap ph' ky y
+
+coerceMap f (JustMap m) = JustMap (f m)
+
+-- | Internal: 'coerceMap' for functions with functorial results.
+
+coerceFmap  :: Functor f
+            => (Map kx x -> f (Map ky y))
+            -> JustMap ph kx x
+            -> f (JustMap ph' ky y)
+
+coerceFmap f (JustMap m) = JustMap <$> f m
+
+-- | Internal: coerce a function that takes a proven 'Key' into one that takes an unproven key.
+
+coerceKey :: (Key ph k -> r) -> k -> r
+coerceKey f = f . Key
 
 {-
 Note [Camino.Map.Justified attribution]
