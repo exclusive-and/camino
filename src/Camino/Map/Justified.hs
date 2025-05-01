@@ -1,4 +1,4 @@
--- | Existential quantification for your map keys, via a phantom type variable.
+-- | Justify map operations ahead of time by remembering which keys were already found.
 
 module Camino.Map.Justified
     ( JustMap
