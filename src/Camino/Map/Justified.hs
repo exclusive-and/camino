@@ -30,7 +30,7 @@ newtype Key ph k = Key
 forgetKey :: Key ph k -> k
 forgetKey = getKey
 
--- | A 'Map' variant that knows which keys.
+-- | A 'Map' variant that knows which keys are known members.
 
 newtype JustMap ph k v = JustMap
     { getMap :: Map k v
