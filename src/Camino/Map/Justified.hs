@@ -18,8 +18,7 @@ import Prelude hiding (lookup)
 import Data.Map (Map)
 import Data.Map qualified as Map
 
--- | A key that knows it can be found in some 'JustMap's. The key's knowledge is conveyed via
---   the phantom type @ph@.
+-- | A key that knows it can be found in some 'JustMap's.
 
 newtype Key ph k = Key
     { getKey :: k
@@ -31,26 +30,25 @@ newtype Key ph k = Key
 forgetKey :: Key ph k -> k
 forgetKey = getKey
 
--- | A 'Map' variant that knows which keys have already been found inside it.
+-- | A 'Map' variant that knows which keys.
 
 newtype JustMap ph k v = JustMap
     { getMap :: Map k v
     }
     deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
--- | Execute a continuation on the input map. Within the continuation, @ph@ carries information
---   about which keys are known to exist in the input map.
+-- | Execute a continuation on the input map. @ph@ will remember any keys found within
+--   the scope of the continuation.
 
 withJustMap :: Map k v -> (forall ph. JustMap ph k v -> r) -> r
 withJustMap m cont = cont (JustMap m)
 
--- | Try to prove that a key exists in a 'JustMap'.
+-- | Try to find a key in a 'JustMap'. If the key lookup succeeds, then @ph@ remembers it.
 
 member :: Ord k => k -> JustMap ph k v -> Maybe (Key ph k)
 member k (JustMap m) = const (Key k) <$> Map.lookup k m
-        
--- | Look up a 'Key' in a 'JustMap'. @ph@ proves that we already know that the key is present
---   in the map.
+
+-- | Look up the value at a key, with justification from @ph@.
 
 lookup :: Ord k => Key ph k -> JustMap ph k v -> v
 lookup (Key k) (JustMap m) = case Map.lookup k m of
@@ -88,7 +86,7 @@ coerceFmap  :: Functor f
 
 coerceFmap f (JustMap m) = JustMap <$> f m
 
--- | Internal: coerce a function that takes a proven 'Key' into one that takes an unproven key.
+-- | Internal: coerce a function into thinking that @ph@ remembers @k@.
 
 coerceKey :: (Key ph k -> r) -> k -> r
 coerceKey f = f . Key
