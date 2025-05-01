@@ -64,7 +64,10 @@ fromMap adjacencyMap =
 
 -- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
 
-fromMapExact :: Ord a => Map a [a] -> Except (JustGraphProblem a) (Graph a)
+fromMapExact    :: (Ord a, Monad m)
+                => Map a [a]
+                -> ExceptT (JustGraphProblem a) m (Graph a)
+                
 fromMapExact input = withJustGraph input $ \jg ->
     let
         enumerated = traverse enum jg `evalState` 0

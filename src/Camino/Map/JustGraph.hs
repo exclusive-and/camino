@@ -19,20 +19,20 @@ data JustGraphProblem a
 -- | Execute a continuation on a /justified graph/. Fails with an exception if the input is
 --   missing keys for any of its vertices.
 
-withJustGraph   :: Ord a
+withJustGraph   :: (Ord a, Monad m)
                 => Map a [a]
                 -> (forall ph. JustMap ph a [Key ph a] -> r)
-                -> Except (JustGraphProblem a) r
+                -> ExceptT (JustGraphProblem a) m r
 
 withJustGraph input cont = JustMap.withJustMap input $ \m -> checkJustGraph m cont
 
 -- | Internal: check whether a 'JustMap' is indeed a valid justified graph. If so, execute the
 --   continuation. Throw an exception otherwise.
 
-checkJustGraph  :: Ord a
+checkJustGraph  :: (Ord a, Monad m)
                 => JustMap ph a [a]
                 -> (forall ph'. JustMap ph' a [Key ph' a] -> r)
-                -> Except (JustGraphProblem a) r
+                -> ExceptT (JustGraphProblem a) m r
 
 checkJustGraph input cont =
     let
