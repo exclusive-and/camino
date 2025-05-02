@@ -31,6 +31,15 @@
 --
 --            putStrLn $ 'lookup' justified1 input ++ " " ++ 'lookup' justified2 input
 -- @
+--
+-- ==== __Attribution__
+--
+-- I owe the inspiration for this module to Matt Noonan's justified-containers package:
+-- 
+-- @
+--  Noonan, M. "justified-containers".
+--      <https://hackage.haskell.org/package/justified-containers> (accessed on 2025-04-29).
+-- @
 
 module Camino.Map.Justified
     ( JustMap
@@ -46,8 +55,6 @@ module Camino.Map.Justified
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Prelude hiding (lookup)
-
--- See Note [Camino.Map.Justified attribution]
 
 -- | A 'Map' variant that knows which keys are known members.
 
@@ -126,12 +133,3 @@ traverseWithKey :: Applicative f
                 -> f (JustMap ph k b)
 
 traverseWithKey f = coerceFmap (Map.traverseWithKey $ coerceKey f)
-
-{-
-Note [Camino.Map.Justified attribution]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-I owe the inspiration for this module to Matt Noonan's justified-containers package:
-
-    Noonan, M. "justified-containers".
-        https://hackage.haskell.org/package/justified-containers (accessed on 2025-04-29).
--}
