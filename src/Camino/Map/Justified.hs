@@ -4,6 +4,7 @@
 
 I owe the inspiration for this module to Matt Noonan's
 [@justified-containers@](https://hackage.haskell.org/package/justified-containers).
+
 -}
 
 module Camino.Map.Justified
