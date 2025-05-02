@@ -1,4 +1,8 @@
-module Camino.Map.Justified.Graph where
+module Camino.Map.Justified.Graph
+    ( JustGraph (..)
+    , JustGraphProblem (..)
+    , withJustGraph
+    ) where
 
 import Camino.Map.Justified (JustMap, Key)
 import Camino.Map.Justified qualified as JustMap
@@ -10,6 +14,14 @@ import Data.Maybe
 import Data.Set (Set)
 import Data.Set qualified as Set
 
+-- | A justified graph. It is "justified" because we guarantee at compile-time that
+--   every vertex referenced in the graph has a corresponding key present in the internal map.
+
+newtype JustGraph ph a = JustGraph
+    { getJustMap :: JustMap ph a [Key ph a]
+    }
+    deriving (Eq, Ord, Show)
+
 -- | Problems reported by 'withJustGraph' exceptions.
 
 data JustGraphProblem a
@@ -18,10 +30,26 @@ data JustGraphProblem a
 
 -- | Execute a continuation on a /justified graph/. Fails with an exception if the input is
 --   missing keys for any of its vertices.
+--
+-- ==== __Examples__
+--
+-- Here's a simple continuation run on a justified graph:
+--
+-- >>> data ABC = A | B | C deriving (Eq, Ord, Show)
+-- >>>
+-- >>> let good = Map.fromList [(A, [B, C]), (B, [C]), (C, [])]
+-- >>> runExcept $ withJustGraph good $ const ()
+-- Right ()
+--
+-- Here's what we get if the map references a vertex that is missing a corresponding key:
+--
+-- >>> let bad = Map.fromList [(A, [B, C]), (B, [C])]
+-- >>> runExcept $ withJustGraph bad $ const ()
+-- Left (MalformedEdges (fromList [(A,C),(B,C)]))
 
 withJustGraph   :: (Ord a, Monad m)
                 => Map a [a]
-                -> (forall ph. JustMap ph a [Key ph a] -> r)
+                -> (forall ph. JustGraph ph a -> r)
                 -> ExceptT (JustGraphProblem a) m r
 
 withJustGraph input cont = JustMap.withJustMap input $ \m -> checkJustGraph m cont
@@ -31,7 +59,7 @@ withJustGraph input cont = JustMap.withJustMap input $ \m -> checkJustGraph m co
 
 checkJustGraph  :: (Ord a, Monad m)
                 => JustMap ph a [a]
-                -> (forall ph'. JustMap ph' a [Key ph' a] -> r)
+                -> (forall ph'. JustGraph ph' a -> r)
                 -> ExceptT (JustGraphProblem a) m r
 
 checkJustGraph input cont =
@@ -39,7 +67,7 @@ checkJustGraph input cont =
         (output, problems) = runWriter $ JustMap.traverseWithKey (traverse . check) input
     in
         if Set.null problems then
-            pure (cont $ catMaybes <$> output)
+            pure (cont . JustGraph $ catMaybes <$> output)
         else
             throwE (MalformedEdges problems)
     where

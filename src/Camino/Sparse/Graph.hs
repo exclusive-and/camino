@@ -2,7 +2,8 @@ module Camino.Sparse.Graph where
 
 import Camino.Identify
 import Camino.Map.Justified.Graph
-    ( JustGraphProblem (..)
+    ( JustGraph (..)
+    , JustGraphProblem (..)
     , withJustGraph
     )
 import Camino.Map.Justified (JustMap, Key)
@@ -68,7 +69,7 @@ fromMapExact    :: (Ord a, Monad m)
                 => Map a [a]
                 -> ExceptT (JustGraphProblem a) m (Graph a)
 
-fromMapExact input = withJustGraph input $ \jg ->
+fromMapExact input = withJustGraph input $ \(JustGraph jg) ->
     let
         enumerated = traverse enum jg `evalState` 0
         edgesMap = second (map (\ky -> fst $ JustMap.lookup ky enumerated)) <$> enumerated
