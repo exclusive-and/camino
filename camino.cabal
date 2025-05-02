@@ -43,7 +43,10 @@ library
         transformers
 
     default-extensions:
+        DeriveAnyClass
+        DeriveGeneric
         DeriveTraversable
+        DerivingStrategies
         DuplicateRecordFields
         GeneralizedNewtypeDeriving
         ImportQualifiedPost
@@ -51,5 +54,6 @@ library
         OverloadedRecordDot
         RankNTypes
         RecordWildCards
+        RoleAnnotations
         ScopedTypeVariables
         TupleSections

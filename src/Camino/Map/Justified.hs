@@ -54,7 +54,10 @@ import Prelude hiding (lookup)
 newtype JustMap ph k v = JustMap
     { getMap :: Map k v
     }
-    deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+    deriving (Eq, Ord, Show)
+    deriving stock (Foldable, Functor, Traversable)
+
+type role JustMap phantom nominal representational
 
 -- | Execute a continuation on the input map. @ph@ will remember any keys found within
 --   the scope of the continuation.
@@ -68,6 +71,8 @@ newtype Key ph k = Key
     { getKey :: k
     }
     deriving (Eq, Ord, Show)
+
+type role Key phantom representational
 
 -- | Get a bare key, forgetting its memberships.
 
