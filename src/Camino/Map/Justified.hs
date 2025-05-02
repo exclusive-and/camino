@@ -1,53 +1,29 @@
--- | Justify map operations ahead of time by remembering which keys are present.
---
--- ==== __Examples__
---
--- Here's an example program that demonstrates how 'member' justifies 'lookup' operations
--- ahead of time:
---
--- @
---  let sample = Map.fromList [(1, "hello"), (2, "world"), (3, "!")]
---
---  'withJustMap' sample $ \\input -> do
---
---    case 1 \`'member'\` input of
---
---      Nothing -> putStrLn "I couldn\'t prove that key 1 is present."
---
---      Just justified1 -> do
---
---        -- I\'ve proven that the key is present.
---        -- Now I can use it for free, without incurring any additional checks.
---
---        putStrLn $ "Found " ++ 'lookup' justified1 input ++ " at key " ++ show justified1
---
---        case 2 \`'member'\` input of
---
---          Nothing -> putStrLn "I couldn\'t prove that key 2 is present."
---
---          Just justified2 -> do
---
---            -- In here I can use both justified1 and justified2 freely!
---
---            putStrLn $ 'lookup' justified1 input ++ " " ++ 'lookup' justified2 input
--- @
---
--- ==== __Attribution__
---
--- I owe the inspiration for this module to Matt Noonan's justified-containers package:
--- 
--- @
---  Noonan, M. "justified-containers".
---      <https://hackage.haskell.org/package/justified-containers> (accessed on 2025-04-29).
--- @
+{- | Justify map operations ahead of time by remembering which keys are present.
+
+== Attribution
+
+I owe the inspiration for this module to Matt Noonan's justified-containers package:
+
+@
+    Noonan, M. "justified-containers".
+      https://hackage.haskell.org/package/justified-containers (accessed on 2025-04-29).
+@
+-}
 
 module Camino.Map.Justified
-    ( JustMap
+    ( -- $toplevel_examples
+
+      -- * Justified maps and keys
+      JustMap
     , withJustMap
     , Key
     , forgetKey
+
+      -- * Query
     , member
     , lookup
+
+      -- * Traversal
     , mapWithKey
     , traverseWithKey
     ) where
@@ -133,3 +109,45 @@ traverseWithKey :: Applicative f
                 -> f (JustMap ph k b)
 
 traverseWithKey f = coerceFmap (Map.traverseWithKey $ coerceKey f)
+
+{- $toplevel_examples
+
+== __Examples__
+
+Here's an example program that demonstrates how 'member' justifies 'lookup'
+operations within the appropriate scope at compile-time:
+
+@
+    let sample = Map.fromList [(1, "hello"), (2, "world"), (3, "!")]
+
+    'withJustMap' sample $ \\input -> do
+
+    case 1 \`'member'\` input of
+
+        Nothing -> putStrLn "I couldn\'t prove that key 1 is present."
+
+        Just justified1 -> do
+
+        -- I\'ve proven that the key is present.
+        -- Now I can use it for free, without incurring any additional checks.
+
+        putStrLn $ "Found " ++ 'lookup' justified1 input ++ " at key " ++ show justified1
+
+        case 2 \`'member'\` input of
+
+          Nothing -> putStrLn "I couldn\'t prove that key 2 is present."
+
+          Just justified2 -> do
+
+            -- In here I can use both justified1 and justified2 freely!
+
+            putStrLn $ 'lookup' justified1 input ++ " " ++ 'lookup' justified2 input
+@
+
+Output:
+
+@
+    Found hello at key "1"
+    hello world
+@
+-}
