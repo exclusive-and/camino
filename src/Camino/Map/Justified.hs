@@ -28,6 +28,7 @@
 --          Just justified2 -> do
 --
 --            -- In here I can use both justified1 and justified2 freely!
+--
 --            putStrLn $ 'lookup' justified1 input ++ " " ++ 'lookup' justified2 input
 -- @
 
