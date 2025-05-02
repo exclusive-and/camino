@@ -73,6 +73,8 @@ fromJustGraph (JustGraph jg) =
         build edges nodes edgesMap
         Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
     where
+        -- See Note [One-shot edgesMap].
+
         (edgesMap, size) = traverse sparsify jg `runState` 0
 
         sparsify ks = do
@@ -93,6 +95,15 @@ fromJustGraph (JustGraph jg) =
 
 fromMapExact :: (Ord a, Monad m) => Map a [a] -> ExceptT (JustGraphProblem a) m (Graph a)
 fromMapExact input = withJustGraph input fromJustGraph
+
+{-
+Note [One-shot edgesMap]
+~~~~~~~~~~~~~~~~~~~~~~~~
+In 'fromJustGraph', @edgesMap@ is constructed in one go by lazy mutual recursion with the
+@sparsify@ helper function.
+
+This trick was suggested to me by Sjoerd Visscher (@sjoerdvisscher on Github).
+-}
 
 -- | Construct a sparse graph from an adjacency list.
 
