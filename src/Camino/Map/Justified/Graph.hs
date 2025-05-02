@@ -2,12 +2,15 @@ module Camino.Map.Justified.Graph
     ( JustGraph (..)
     , JustGraphProblem (..)
     , withJustGraph
+    , withJustGraphT
     ) where
 
 import Camino.Map.Justified (JustMap, Key)
 import Camino.Map.Justified qualified as JustMap
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Writer
+import Data.Functor.Identity
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe
@@ -52,22 +55,33 @@ withJustGraph   :: (Ord a, Monad m)
                 -> (forall ph. JustGraph ph a -> r)
                 -> ExceptT (JustGraphProblem a) m r
 
-withJustGraph input cont = JustMap.withJustMap input $ \m -> checkJustGraph m cont
+withJustGraph input cont = withJustGraphT input (pure . cont)
+
+-- | Execute a monadic continuation on a justified graph. Fails with an exception if the input
+--   is missing keys for any of its vertices.
+
+withJustGraphT  :: (Ord a, Monad m)
+                => Map a [a]
+                -> (forall ph. JustGraph ph a -> m r)
+                -> ExceptT (JustGraphProblem a) m r
+
+withJustGraphT input cont = JustMap.withJustMap input $ \m -> checkJustGraphT m cont
 
 -- | Internal: check whether a 'JustMap' is indeed a valid justified graph. If so, execute the
 --   continuation. Throw an exception otherwise.
 
-checkJustGraph  :: (Ord a, Monad m)
+checkJustGraphT :: (Ord a, Monad m)
                 => JustMap ph a [a]
-                -> (forall ph'. JustGraph ph' a -> r)
+                -> (forall ph'. JustGraph ph' a -> m r)
                 -> ExceptT (JustGraphProblem a) m r
 
-checkJustGraph input cont =
+checkJustGraphT input cont =
     let
         (output, problems) = runWriter $ JustMap.traverseWithKey (traverse . check) input
     in
-        if Set.null problems then
-            pure (cont . JustGraph $ catMaybes <$> output)
+        if Set.null problems then do
+            let jg = JustGraph $ catMaybes <$> output
+            lift $ cont jg 
         else
             throwE (MalformedEdges problems)
     where
