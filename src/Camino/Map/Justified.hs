@@ -2,12 +2,8 @@
 
 == Attribution
 
-I owe the inspiration for this module to Matt Noonan's justified-containers package:
-
-@
-    Noonan, M. "justified-containers".
-      https://hackage.haskell.org/package/justified-containers (accessed on 2025-04-29).
-@
+I owe the inspiration for this module to Matt Noonan's
+[@justified-containers@](https://hackage.haskell.org/package/justified-containers).
 -}
 
 module Camino.Map.Justified
