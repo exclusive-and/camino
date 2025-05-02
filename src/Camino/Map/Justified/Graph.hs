@@ -5,7 +5,11 @@ module Camino.Map.Justified.Graph
     , withJustGraphT
     ) where
 
-import Camino.Map.Justified (JustMap, Key)
+import Camino.Map.Justified
+    ( JustMap
+    , Key
+    , withJustMap
+    )
 import Camino.Map.Justified qualified as JustMap
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
@@ -65,7 +69,7 @@ withJustGraphT  :: (Ord a, Monad m)
                 -> (forall ph. JustGraph ph a -> m r)
                 -> ExceptT (JustGraphProblem a) m r
 
-withJustGraphT input cont = JustMap.withJustMap input $ \m -> checkJustGraphT m cont
+withJustGraphT input cont = withJustMap input $ \m -> checkJustGraphT m cont
 
 -- | Internal: check whether a 'JustMap' is indeed a valid justified graph. If so, execute the
 --   continuation. Throw an exception otherwise.
