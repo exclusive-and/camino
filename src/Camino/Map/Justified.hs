@@ -1,14 +1,8 @@
-{- | Justify map operations ahead of time by remembering which keys are present.
-
-== Attribution
-
-I owe the inspiration for this module to Matt Noonan's
-[@justified-containers@](https://hackage.haskell.org/package/justified-containers).
-
--}
+-- | Justify map operations ahead of time by remembering which keys are present.
 
 module Camino.Map.Justified
     (
+    -- $citations
     -- $toplevel_examples
 
     -- * Justified maps and keys
@@ -26,9 +20,16 @@ module Camino.Map.Justified
     , traverseWithKey
     ) where
 
+import Prelude hiding (lookup)
+
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Prelude hiding (lookup)
+
+{- $citations
+
+This module is heavily inspired by Matt Noonan's
+[@justified-containers@](https://hackage.haskell.org/package/justified-containers).
+-}
 
 -- | A 'Map' variant that knows which keys are known members.
 
