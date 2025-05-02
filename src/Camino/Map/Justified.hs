@@ -2,9 +2,9 @@
 
 module Camino.Map.Justified
     ( JustMap
+    , withJustMap
     , Key
     , forgetKey
-    , withJustMap
     , member
     , lookup
     , mapWithKey
@@ -18,18 +18,6 @@ import Prelude hiding (lookup)
 import Data.Map (Map)
 import Data.Map qualified as Map
 
--- | A key that knows it can be found in some 'JustMap's.
-
-newtype Key ph k = Key
-    { getKey :: k
-    }
-    deriving (Eq, Ord, Show)
-
--- | Get a bare key, forgetting its memberships.
-
-forgetKey :: Key ph k -> k
-forgetKey = getKey
-
 -- | A 'Map' variant that knows which keys are known members.
 
 newtype JustMap ph k v = JustMap
@@ -42,6 +30,18 @@ newtype JustMap ph k v = JustMap
 
 withJustMap :: Map k v -> (forall ph. JustMap ph k v -> r) -> r
 withJustMap m cont = cont (JustMap m)
+
+-- | A key that knows it can be found in some 'JustMap's.
+
+newtype Key ph k = Key
+    { getKey :: k
+    }
+    deriving (Eq, Ord, Show)
+
+-- | Get a bare key, forgetting its memberships.
+
+forgetKey :: Key ph k -> k
+forgetKey = getKey
 
 -- | Try to find a key in a 'JustMap'. If the key lookup succeeds, then @ph@ remembers it.
 
