@@ -63,30 +63,36 @@ fromMap adjacencyMap =
     where
         go x = Map.findWithDefault [] x adjacencyMap
 
--- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
+-- | Construct a sparse graph from a 'JustGraph'.
 
-fromMapExact    :: (Ord a, Monad m)
-                => Map a [a]
-                -> ExceptT (JustGraphProblem a) m (Graph a)
-
-fromMapExact input = withJustGraph input $ \(JustGraph jg) ->
-    let
-        enumerated = traverse enum jg `evalState` 0
-        edgesMap = second (map (\ky -> fst $ JustMap.lookup ky enumerated)) <$> enumerated
-    in
-        runST $ do
-            edges <- newArray (length enumerated) (error "impossible")
-            nodes <- newArray (length enumerated) (error "impossible")
-            build edges nodes edgesMap
-            Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
+fromJustGraph :: Ord a => JustGraph ph a -> Graph a
+fromJustGraph (JustGraph jg) = 
+    runST $ do
+        edges <- newArray size (error "impossible")
+        nodes <- newArray size (error "impossible")
+        build edges nodes edgesMap
+        Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
     where
-        enum x = get >>= \n -> put (n + 1) *> pure (n, x)
+        (edgesMap, size) = traverse sparsify jg `runState` 0
 
-        build edges nodes = void . JustMap.traverseWithKey go
-            where
-                go kx (n, ws) = do
+        sparsify ks = do
+            n <- get
+            put (n + 1)
+            pure (n, map (\k -> fst $ JustMap.lookup k edgesMap) ks)
+        
+        build edges nodes =
+            let
+                f kx (n, ws) = do
                     writeArray edges n ws
                     writeArray nodes n (JustMap.forgetKey kx)
+            in
+                void . JustMap.traverseWithKey f
+
+-- | Try to construct a sparse graph from a map. Fails with an exception if the map cannot
+--   be converted to a 'JustGraph'.
+
+fromMapExact :: (Ord a, Monad m) => Map a [a] -> ExceptT (JustGraphProblem a) m (Graph a)
+fromMapExact input = withJustGraph input fromJustGraph
 
 -- | Construct a sparse graph from an adjacency list.
 
