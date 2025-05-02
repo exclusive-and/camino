@@ -11,19 +11,20 @@ I owe the inspiration for this module to Matt Noonan's justified-containers pack
 -}
 
 module Camino.Map.Justified
-    ( -- $toplevel_examples
+    (
+    -- $toplevel_examples
 
-      -- * Justified maps and keys
+    -- * Justified maps and keys
       JustMap
     , withJustMap
     , Key
     , forgetKey
 
-      -- * Query
+    -- * Query
     , member
     , lookup
 
-      -- * Traversal
+    -- * Traversal
     , mapWithKey
     , traverseWithKey
     ) where
