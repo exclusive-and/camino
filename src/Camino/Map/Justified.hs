@@ -1,21 +1,31 @@
--- | Justify map operations ahead of time by remembering which keys are present.
+-- | 
+--
+-- This module is inspired by Matt Noonan's
+-- [@justified-containers@](https://hackage.haskell.org/package/justified-containers).
 
 module Camino.Map.Justified
     (
-    -- $citations
     -- $toplevel_examples
 
-    -- * Justified maps and keys
+    -- * Justified maps
+    
       JustMap
     , withJustMap
-    , Key
-    , forgetKey
 
     -- * Query
+
+    -- ** Justified keys
+    , Key
+    , forgetKey
+    , (?)
     , member
+
+    -- ** Justified lookup
+    , (!)
     , lookup
 
     -- * Traversal
+
     , mapWithKey
     , traverseWithKey
     ) where
@@ -24,12 +34,6 @@ import Prelude hiding (lookup)
 
 import Data.Map (Map)
 import Data.Map qualified as Map
-
-{- $citations
-
-This module is heavily inspired by Matt Noonan's
-[@justified-containers@](https://hackage.haskell.org/package/justified-containers).
--}
 
 -- | A 'Map' variant that knows which keys are known members.
 
@@ -61,10 +65,20 @@ type role Key phantom representational
 forgetKey :: Key ph k -> k
 forgetKey = getKey
 
+-- | @someMap '?' key@ is shorthand for @'member' key someMap@.
+
+(?) :: Ord k => JustMap ph k v -> k -> Maybe (Key ph k)
+(?) = flip member
+
 -- | Try to find a key in a 'JustMap'. If the key lookup succeeds, then @ph@ remembers it.
 
 member :: Ord k => k -> JustMap ph k v -> Maybe (Key ph k)
 member k (JustMap m) = const (Key k) <$> Map.lookup k m
+
+-- | @someMap '!' key@ is shorthand for @'lookup' key someMap@.
+
+(!) :: Ord k => JustMap ph k v -> Key ph k -> v
+(!) = flip lookup
 
 -- | Look up the value at a key, with justification from @ph@.
 
