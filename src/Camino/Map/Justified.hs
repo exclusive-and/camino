@@ -3,10 +3,10 @@
 -- especially in situations where we already know that certain keys /must/ be present.
 --
 -- "Camino.Map.Justified" defines a map interface based on keys that have
--- /intrinsic membership/: for some phantom type @ph@, a key @'Key' ph k@ is guaranteed to
--- be a member of all maps @'JustMap' ph k v@ in the same scope. Because membership is
--- intrinsic, queries on these keys are no longer required to consider the case where keys
--- are not present.
+-- /intrinsic membership/: for some phantom type @ph@, a key @'Key' ph k@ is guaranteed
+-- to be a member of all maps @'JustMap' ph k v@ in the same scope. Because membership
+-- is intrinsic, queries on these keys are no longer required to consider the case where
+-- keys are not present.
 --
 -- In short: intrinsic membership means that 'lookup' returns only @v@; not @'Maybe' v@!
 --
