@@ -1,6 +1,7 @@
 module Camino.Map.Justified
     (
     -- * Description
+    
     -- $ModuleDescription
     
     -- * Justified maps
