@@ -1,7 +1,6 @@
 module Camino.Map.Justified
     (
     -- * Description
-    --
     -- $ModuleDescription
     
     -- * Justified maps
@@ -22,7 +21,6 @@ module Camino.Map.Justified
     , lookup
 
     -- ** Example
-    --
     -- $JustifiedQueryExample
 
     -- * Traversal
