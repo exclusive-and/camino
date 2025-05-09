@@ -1,21 +1,9 @@
--- | Map queries generally involve determining whether a key is present or not, either
--- directly or indirectly. Handling these cases can result in cluttered code;
--- especially in situations where we already know that certain keys /must/ be present.
---
--- "Camino.Map.Justified" defines a map interface based on keys that have
--- /intrinsic membership/: for some phantom type @ph@, a key @'Key' ph k@ is guaranteed
--- to be a member of all maps @'JustMap' ph k v@ in the same scope. Because membership
--- is intrinsic, queries on these keys are no longer required to consider the case where
--- keys are not present.
---
--- In short: intrinsic membership means that 'lookup' returns only @v@; not @'Maybe' v@!
---
--- = Attribution
---
--- This module is inspired by Matt Noonan's [@justified-containers@](https://hackage.haskell.org/package/justified-containers).
-
 module Camino.Map.Justified
     (
+    -- * Description
+    --
+    -- $ModuleDescription
+    
     -- * Justified maps
     
       JustMap
@@ -35,7 +23,7 @@ module Camino.Map.Justified
 
     -- ** Example
     --
-    -- $justified_query_example
+    -- $JustifiedQueryExample
 
     -- * Traversal
 
@@ -47,6 +35,24 @@ import Prelude hiding (lookup)
 
 import Data.Map (Map)
 import Data.Map qualified as Map
+
+{- $ModuleDescription
+
+Map queries generally involve determining whether a key is present or not, either directly
+or indirectly. Handling these cases can result in cluttered code; especially in
+situations where we already know that certain keys /must/ be present.
+
+"Camino.Map.Justified" defines a map interface based on keys that have /intrinsic membership/:
+for some phantom type @ph@, a key @'Key' ph k@ is guaranteed to be a member of all maps
+@'JustMap' ph k v@ in the same scope. Because membership is intrinsic, queries on these keys
+are no longer required to consider the case where keys are not present.
+
+In short: intrinsic membership means that 'lookup' returns only @v@; not @'Maybe' v@!
+
+= Attribution
+
+This module is inspired by Matt Noonan's [@justified-containers@](https://hackage.haskell.org/package/justified-containers).
+-}
 
 -- | A map from keys @'Key' ph k@ to values @v@. This map variant is special because the keys
 --   are guaranteed to be members. So 'lookup' returns @v@ directly; not @'Maybe' v@.
@@ -101,7 +107,7 @@ lookup (Key k) (JustMap m) = case Map.lookup k m of
     Just v  -> v
     Nothing -> error "impossible: Camino.Map.Justified has been subverted!"
 
-{- $justified_query_example
+{- $JustifiedQueryExample
 
 Here's an example program that demonstrates how 'member' justifies 'lookup' operations
 within the appropriate scope at compile-time:
