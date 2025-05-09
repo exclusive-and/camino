@@ -37,9 +37,10 @@ import Data.Map qualified as Map
 
 {- $ModuleDescription
 
-Map queries generally involve determining whether a key is present or not, either directly
-or indirectly. Handling these cases can result in cluttered code; especially in
-situations where we already know that certain keys /must/ be present.
+Map queries generally involve determining whether a key is present or not. Sometimes these
+checks are indirect, like @Map.'lookup'@ returning 'Nothing' when it can't find a key.
+Handling these cases can result in cluttered code; especially in situations where we already
+know that certain keys will be present.
 
 "Camino.Map.Justified" defines a map interface based on keys that have /intrinsic membership/:
 for some phantom type @ph@, a key @'Key' ph k@ is guaranteed to be a member of all maps
