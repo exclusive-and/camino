@@ -53,8 +53,7 @@ intrinsic membership.
 This module is inspired by Matt Noonan's [@justified-containers@](https://hackage.haskell.org/package/justified-containers).
 -}
 
--- | A map from keys @'Key' ph k@ to values @v@. This map variant is special because the keys
---   are guaranteed to be members. So 'lookup' returns @v@ directly; not @'Maybe' v@.
+-- | A map from keys @'Key' ph k@ to values @v@.
 
 newtype JustMap ph k v = JustMap
     { getMap :: Map k v
@@ -70,7 +69,7 @@ type role JustMap phantom nominal representational
 withJustMap :: Map k v -> (forall ph. JustMap ph k v -> r) -> r
 withJustMap m cont = cont (JustMap m)
 
--- | A key that is intrinsically a member of certain compatible 'JustMap's by construction.
+-- | A key that is intrinsically a member of maps @'JustMap' ph k v@.
 
 newtype Key ph k = Key
     { getKey :: k
