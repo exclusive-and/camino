@@ -1,15 +1,13 @@
 module Camino.Map.Justified
     (
-    -- * Description
+    -- * Introduction
+    -- $intro
     
-    -- $ModuleDescription
-    
-    -- * Justified maps
-    
+    -- * Maps
       JustMap
     , withJustMap
 
-    -- * Justified queries
+    -- * Queries
 
     -- ** Keys
     , Key
@@ -17,15 +15,14 @@ module Camino.Map.Justified
     , (?)
     , member
 
-    -- ** Lookup
+    -- ** Justified lookup
     , (!)
     , lookup
 
     -- ** Example
-    -- $JustifiedQueryExample
+    -- $query1
 
     -- * Traversal
-
     , mapWithKey
     , traverseWithKey
     ) where
@@ -35,7 +32,7 @@ import Prelude hiding (lookup)
 import Data.Map (Map)
 import Data.Map qualified as Map
 
-{- $ModuleDescription
+{- $intro
 
 Map queries generally involve determining whether a key is present or not. Often the checks
 are indirect, like @Map.'lookup'@ returning 'Nothing' when it can't find a key.
@@ -107,7 +104,7 @@ lookup (Key k) (JustMap m) = case Map.lookup k m of
     Just v  -> v
     Nothing -> error "impossible: Camino.Map.Justified has been subverted!"
 
-{- $JustifiedQueryExample
+{- $query1
 
 Here's an example program that demonstrates how 'member' justifies 'lookup' operations
 within the appropriate scope at compile-time:
