@@ -1,0 +1,96 @@
+module Camino.Map.Justified.Graph
+    ( JustGraph (..)
+    , JustGraphProblem (..)
+    , withJustGraph
+    , withJustGraphT
+    ) where
+
+import Camino.Map.Justified
+    ( JustMap
+    , Key
+    , withJustMap
+    )
+import Camino.Map.Justified qualified as JustMap
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Except
+import Control.Monad.Trans.Writer
+import Data.Functor.Identity
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe
+import Data.Set (Set)
+import Data.Set qualified as Set
+
+-- | A justified graph. It is "justified" because we guarantee at compile-time that
+--   every vertex referenced in the graph has a corresponding key present in the internal map.
+
+newtype JustGraph ph a = JustGraph
+    { getJustMap :: JustMap ph a [Key ph a]
+    }
+    deriving (Eq, Ord, Show)
+
+-- | Problems reported by 'withJustGraph' exceptions.
+
+data JustGraphProblem a
+    = MalformedEdges (Set (a, a))
+    deriving Show
+
+-- | Execute a continuation on a /justified graph/. Fails with an exception if the input is
+--   missing keys for any of its vertices.
+--
+-- ==== __Examples__
+--
+-- Here's a simple continuation run on a justified graph:
+--
+-- >>> data ABC = A | B | C deriving (Eq, Ord, Show)
+-- >>>
+-- >>> let good = Map.fromList [(A, [B, C]), (B, [C]), (C, [])]
+-- >>> runExcept $ withJustGraph good $ const ()
+-- Right ()
+--
+-- Here's what we get if the map references a vertex that is missing a corresponding key:
+--
+-- >>> let bad = Map.fromList [(A, [B, C]), (B, [C])]
+-- >>> runExcept $ withJustGraph bad $ const ()
+-- Left (MalformedEdges (fromList [(A,C),(B,C)]))
+
+withJustGraph   :: (Ord a, Monad m)
+                => Map a [a]
+                -> (forall ph. JustGraph ph a -> r)
+                -> ExceptT (JustGraphProblem a) m r
+
+withJustGraph input cont = withJustGraphT input (pure . cont)
+
+-- | Execute a monadic continuation on a justified graph. Fails with an exception if the input
+--   is missing keys for any of its vertices.
+
+withJustGraphT  :: (Ord a, Monad m)
+                => Map a [a]
+                -> (forall ph. JustGraph ph a -> m r)
+                -> ExceptT (JustGraphProblem a) m r
+
+withJustGraphT input cont = withJustMap input $ \m -> checkJustGraphT m cont
+
+-- | Internal: check whether a 'JustMap' is indeed a valid justified graph. If so, execute the
+--   continuation. Throw an exception otherwise.
+
+checkJustGraphT :: (Ord a, Monad m)
+                => JustMap ph a [a]
+                -> (forall ph'. JustGraph ph' a -> m r)
+                -> ExceptT (JustGraphProblem a) m r
+
+checkJustGraphT input cont =
+    let
+        (output, problems) = runWriter $ JustMap.traverseWithKey (traverse . check) input
+    in
+        if Set.null problems then do
+            let jg = JustGraph $ catMaybes <$> output
+            lift $ cont jg 
+        else
+            throwE (MalformedEdges problems)
+    where
+        check kx y = case y `JustMap.member` input of
+            Just ky -> pure (Just ky)
+            Nothing -> report kx y *> pure Nothing
+        
+        report kx y = tell (Set.singleton (JustMap.forgetKey kx, y))

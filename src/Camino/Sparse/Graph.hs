@@ -1,11 +1,19 @@
 module Camino.Sparse.Graph where
 
 import Camino.Identify
+import Camino.Map.Justified.Graph
+    ( JustGraph (..)
+    , JustGraphProblem (..)
+    , withJustGraph
+    )
+import Camino.Map.Justified (JustMap, Key)
+import Camino.Map.Justified qualified as JustMap
 import Control.Monad.ST
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
+import Data.Bifunctor (second)
 import Data.Foldable
 import Data.Functor (void)
 import Data.Map (Map)
@@ -55,38 +63,47 @@ fromMap adjacencyMap =
     where
         go x = Map.findWithDefault [] x adjacencyMap
 
--- | A problem raised by 'fromMapExact' when it encounters a vertex with no corresponding key.
+-- | Construct a sparse graph from a 'JustGraph'.
 
-data CantMakeEdge a = CantMakeEdge
-    { from  :: a
-    , to    :: a
-    }
-    deriving (Eq, Ord, Show)
-
-type CantMakeEdges a = Set (CantMakeEdge a)
-
--- | Construct a sparse graph whose vertices exactly match the keys of the input adjacency map.
-
-fromMapExact :: Ord a => Map a [a] -> Except (CantMakeEdges a) (Graph a)
-fromMapExact input =
-    let
-        (checked, problems) = runWriter $ Map.traverseWithKey check input
-        (indexMap, arr) = Map.indirect checked
-    in
-        if Set.null problems then
-            pure $ Graph
-                { edges = map (indexMap Map.!) <$> arr
-                , nodes = Map.unsafeFastKeyArray indexMap
-                }
-        else
-            throwE problems
+fromJustGraph :: Ord a => JustGraph ph a -> Graph a
+fromJustGraph (JustGraph jg) = 
+    runST $ do
+        edges <- newArray size (error "impossible")
+        nodes <- newArray size (error "impossible")
+        build edges nodes edgesMap
+        Graph <$> unsafeFreezeArray edges <*> unsafeFreezeArray nodes
     where
-        check x = traverse go where
-            go y = pure y <*
-                if y `Map.member` input then
-                    pure ()
-                else
-                    tell (Set.singleton $ CantMakeEdge x y)
+        -- See Note [One-shot edgesMap].
+
+        (edgesMap, size) = traverse sparsify jg `runState` 0
+
+        sparsify ks = do
+            n <- get
+            put (n + 1)
+            pure (n, map (\k -> fst $ JustMap.lookup k edgesMap) ks)
+        
+        build edges nodes =
+            let
+                f kx (n, ws) = do
+                    writeArray edges n ws
+                    writeArray nodes n (JustMap.forgetKey kx)
+            in
+                void . JustMap.traverseWithKey f
+
+-- | Try to construct a sparse graph from a map. Fails with an exception if the map cannot
+--   be converted to a 'JustGraph'.
+
+fromMapExact :: (Ord a, Monad m) => Map a [a] -> ExceptT (JustGraphProblem a) m (Graph a)
+fromMapExact input = withJustGraph input fromJustGraph
+
+{-
+Note [One-shot edgesMap]
+~~~~~~~~~~~~~~~~~~~~~~~~
+In 'fromJustGraph', @edgesMap@ is constructed in one go by lazy mutual recursion with the
+@sparsify@ helper function.
+
+This trick was suggested to me by Sjoerd Visscher (@sjoerdvisscher on Github).
+-}
 
 -- | Construct a sparse graph from an adjacency list.
 

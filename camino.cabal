@@ -25,6 +25,8 @@ library
 
     exposed-modules:
         Camino.Identify
+        Camino.Map.Justified
+        Camino.Map.Justified.Graph
         Camino.Sparse.Graph
         Camino.Sparse.Reaching
         Camino.Sparse.Relations
@@ -40,11 +42,17 @@ library
         transformers
 
     default-extensions:
+        DeriveAnyClass
+        DeriveGeneric
+        DeriveTraversable
+        DerivingStrategies
         DuplicateRecordFields
+        GeneralizedNewtypeDeriving
         ImportQualifiedPost
         NamedFieldPuns
         OverloadedRecordDot
         RankNTypes
         RecordWildCards
+        RoleAnnotations
         ScopedTypeVariables
         TupleSections
