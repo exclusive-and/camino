@@ -25,7 +25,8 @@ module Camino.Map.Justified
     -- * Traversal
     , mapWithKey
     , traverseWithKey
-    ) where
+    )
+    where
 
 import Prelude hiding (lookup)
 
@@ -34,17 +35,17 @@ import Data.Map qualified as Map
 
 {- $intro
 
-Map queries generally involve determining whether a key is present or not. Often the checks
-are indirect, like @Map.'lookup'@ returning 'Nothing' when it can't find a key.
-Handling these cases can result in cluttered code; especially in situations where
-we already know that certain keys will be present.
+Many map operations are contingent on whether or not a key is present in the map.  For example,
+'Data.Map.lookup' returns @Just v@ when it finds a key, and @Nothing@ otherwise.  Handling
+these cases can result in cluttered code, especially in situations where we already know that
+certain keys will be present.
 
 "Camino.Map.Justified" defines a map interface based on keys that have /intrinsic membership/:
 for some phantom type @ph@, a key @'Key' ph k@ is guaranteed to be a member of all maps
-@'JustMap' ph k v@ in the same scope. Consequently, the presence of these keys is a given for
+@'JustMap' ph k v@ in the same scope.  Consequently, the presence of these keys is a given for
 query operations.
 
-In short: 'lookup' returns only @v@; not @'Maybe' v@! This shortcut is justified by the key's
+In short: 'lookup' returns only @v@; not @'Maybe' v@!  This shortcut is justified by the key's
 intrinsic membership.
 
 = Attribution
